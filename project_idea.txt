@@ -1,0 +1,2019 @@
+# MASTER IMPLEMENTATION PROMPT — MEETBRIDGE AI
+
+You are a senior AI architect, full-stack engineer, ML engineer, DevOps engineer, security engineer, and SaaS architect.
+
+Build a production-oriented SaaS application named:
+
+# MeetBridge AI
+
+Tagline:
+
+**Understand. Think. Respond.**
+
+MeetBridge AI is a real-time AI meeting copilot that listens to meeting audio with user consent, converts speech to text, understands what another person is asking, explains the intent behind the question, retrieves relevant information from the user's knowledge base, and generates a concise suggested response in real time.
+
+It must also support multilingual conversations, meeting memory, summaries, action items, decisions, searchable meeting history, personal/company knowledge bases, AI agents, integrations, analytics, security controls, and multi-tenant SaaS architecture.
+
+The project MUST be implemented incrementally in exactly **40 Git commits**.
+
+Do NOT attempt to build the whole application at once.
+
+For every commit:
+
+1. Explain the objective.
+2. List files to create/change.
+3. Implement only that commit's scope.
+4. Add/update tests.
+5. Run relevant tests/lint/type checks.
+6. Fix failures before finishing.
+7. Update documentation if necessary.
+8. Provide manual verification steps.
+9. Provide the exact Git commit message.
+10. STOP and wait for me before starting the next commit.
+
+Never skip commits.
+
+Never combine multiple commits.
+
+Never rewrite working functionality unnecessarily.
+
+Keep the application runnable after every meaningful stage.
+
+---
+
+# 1. PRODUCT GOAL
+
+The core real-time workflow is:
+
+Meeting Audio
+→ Voice Activity Detection
+→ Streaming Speech-to-Text
+→ Speaker/utterance processing
+→ Conversation context
+→ Question detection
+→ Intent understanding
+→ Knowledge retrieval
+→ AI reasoning
+→ Suggested response
+→ Optional translation
+→ Real-time frontend display
+
+After the meeting:
+
+Transcript
+→ Summary
+→ Decisions
+→ Action Items
+→ Questions
+→ Commitments
+→ Risks
+→ Follow-ups
+→ Long-term meeting memory
+
+Before a future meeting:
+
+Previous meetings
+
+* Knowledge base
+* User profile
+* Relevant documents
+  → Context preparation
+  → Meeting briefing
+
+---
+
+# 2. IMPORTANT PRODUCT PRINCIPLES
+
+The application must be designed as a legitimate assistive meeting copilot.
+
+Always provide visible recording/listening state.
+
+Provide consent/privacy controls.
+
+Do not design hidden recording, stealth UI, monitoring bypasses, or functionality intended to defeat meeting/interview rules.
+
+Security and tenant isolation are first-class requirements.
+
+AI output must clearly distinguish:
+
+* transcript
+* detected question
+* interpretation
+* retrieved evidence
+* suggested response
+
+Never present uncertain AI interpretations as facts.
+
+---
+
+# 3. REQUIRED TECH STACK
+
+## Frontend
+
+Use:
+
+* Next.js
+* React
+* TypeScript
+* Tailwind CSS
+* reusable component architecture
+* WebSocket client
+* browser MediaRecorder/Web Audio APIs
+* responsive UI
+* accessible components
+* state management appropriate to application complexity
+
+Do not over-engineer frontend state initially.
+
+## Backend
+
+Use:
+
+* Python
+* FastAPI
+* Pydantic
+* SQLAlchemy
+* Alembic
+* async APIs where appropriate
+* WebSockets
+* structured logging
+
+Use a clean modular architecture.
+
+Suggested structure:
+
+backend/
+app/
+api/
+core/
+db/
+models/
+schemas/
+services/
+repositories/
+ai/
+agents/
+rag/
+speech/
+integrations/
+websocket/
+security/
+observability/
+workers/
+utils/
+tests/
+
+## Databases
+
+Primary:
+
+PostgreSQL
+
+Vector storage:
+
+pgvector
+
+Caching/session/real-time support:
+
+Redis
+
+Design abstractions so another vector database could be introduced later.
+
+## AI
+
+Use provider interfaces.
+
+Do NOT tightly couple business logic to one LLM provider.
+
+Support configuration for:
+
+* OpenAI-compatible providers
+* local Ollama models
+
+Create interfaces such as:
+
+LLMProvider
+EmbeddingProvider
+SpeechToTextProvider
+TranslationProvider
+
+Hosted providers can be added through adapters.
+
+## AI Frameworks
+
+Use:
+
+* LangChain where it provides useful abstractions
+* LangGraph for stateful agent workflows
+
+Do NOT use LangChain unnecessarily around simple Python functions.
+
+## Background Processing
+
+Introduce a background task architecture for:
+
+* document ingestion
+* embeddings
+* post-meeting analysis
+* large summaries
+* analytics jobs
+
+Choose Celery/RQ/another appropriate Python queue and document the decision.
+
+## Infrastructure
+
+Use:
+
+* Docker
+* Docker Compose
+* GitHub Actions
+* environment-based configuration
+* AWS-compatible production architecture
+
+Local development must remain simple.
+
+---
+
+# 4. MONOREPO
+
+Use a structure similar to:
+
+meetbridge-ai/
+frontend/
+backend/
+infrastructure/
+docs/
+scripts/
+.github/
+docker-compose.yml
+.env.example
+README.md
+
+Create a clear README explaining local development.
+
+---
+
+# 5. CORE DATABASE ENTITIES
+
+Design appropriate schemas for at least:
+
+User
+Organization
+OrganizationMember
+Subscription
+UsageRecord
+
+Meeting
+MeetingParticipant
+TranscriptSegment
+MeetingSummary
+MeetingActionItem
+MeetingDecision
+
+KnowledgeBase
+Document
+DocumentChunk
+
+ConversationContext
+AISuggestion
+AIInteraction
+AgentExecution
+
+Integration
+AuditLog
+
+Do not create all tables prematurely.
+
+Add tables through migrations when their feature is implemented.
+
+All tenant-owned records must be associated with the appropriate user/organization.
+
+---
+
+# 6. MULTI-TENANCY
+
+Support:
+
+Personal workspace
+
+and
+
+Organization workspace.
+
+Organization roles:
+
+OWNER
+ADMIN
+MEMBER
+
+Design authorization so resources cannot be accessed by another tenant by manipulating IDs.
+
+Every protected query must enforce tenant scope.
+
+Write tests specifically for cross-tenant access attempts.
+
+---
+
+# 7. REAL-TIME MEETING SCREEN
+
+The primary interface should contain:
+
+Meeting title
+Listening status
+Connection status
+Timer
+Live transcript
+
+Current Question
+
+"What are they asking?"
+
+"Why are they asking it?"
+
+Key points
+
+Suggested Answer
+
+Controls:
+
+Start
+Pause
+Stop
+Mute AI suggestions
+Short answer
+Detailed answer
+Technical answer
+Translate
+
+Example:
+
+QUESTION
+
+How would you improve RAG accuracy?
+
+WHAT THEY ARE ASKING
+
+They want your practical approach for diagnosing and improving retrieval quality.
+
+KEY POINTS
+
+* evaluation dataset
+* chunking
+* hybrid retrieval
+* metadata filtering
+* reranking
+* retrieval metrics
+
+SUGGESTED RESPONSE
+
+First, I would determine whether the problem comes from retrieval or generation...
+
+The interface must update incrementally without full-page refreshes.
+
+---
+
+# 8. REAL-TIME AUDIO PIPELINE
+
+Design the system so audio processing can eventually scale independently.
+
+Browser microphone
+→ audio chunks
+→ WebSocket
+→ backend speech pipeline
+→ STT provider
+→ normalized transcript segments
+→ context buffer
+→ question detector
+→ AI pipeline
+→ WebSocket response
+→ frontend
+
+Do not send unnecessary raw audio permanently to storage.
+
+Make audio retention configurable and disabled by default.
+
+---
+
+# 9. QUESTION DETECTION
+
+Implement a staged strategy.
+
+First use simple deterministic heuristics for obvious questions.
+
+Then introduce an LLM-based classifier for ambiguous utterances.
+
+Output structured data:
+
+{
+"is_question": true,
+"confidence": 0.94,
+"question": "...",
+"question_type": "...",
+"requires_response": true
+}
+
+Avoid running expensive LLM calls for every transcript fragment.
+
+Use sentence completion/debounce/context buffering.
+
+---
+
+# 10. INTENT UNDERSTANDING
+
+For a detected question, generate structured output:
+
+question
+intent
+why_they_are_asking
+expected_answer_type
+important_topics
+context_needed
+confidence
+
+Example:
+
+{
+"question": "Can this system handle one million products?",
+"intent": "Evaluate scalability",
+"why_they_are_asking": "The speaker is concerned about future system performance.",
+"expected_answer_type": "technical explanation",
+"important_topics": [
+"indexing",
+"retrieval latency",
+"database scaling",
+"cost"
+]
+}
+
+Use Pydantic schemas.
+
+---
+
+# 11. KNOWLEDGE BASE / RAG
+
+Users must be able to create knowledge bases.
+
+Support document upload initially for:
+
+PDF
+DOCX
+TXT
+Markdown
+
+Build pipeline:
+
+Upload
+→ validation
+→ text extraction
+→ cleaning
+→ chunking
+→ metadata
+→ embeddings
+→ pgvector
+
+Store:
+
+document_id
+organization_id
+user_id
+chunk
+embedding
+page/source
+metadata
+
+Implement semantic search.
+
+Then hybrid retrieval.
+
+Then metadata filtering.
+
+Then reranking.
+
+Every generated meeting response should be able to cite which personal/company sources influenced it.
+
+---
+
+# 12. RAG EVALUATION
+
+Create an evaluation module.
+
+Measure at least:
+
+retrieval relevance
+context precision
+context recall where ground truth exists
+answer relevance
+groundedness/faithfulness
+latency
+token usage
+cost estimate
+
+Create a small evaluation dataset.
+
+Do not claim improvements without metrics.
+
+---
+
+# 13. USER CONTEXT
+
+Create user context/profile features for information the user explicitly chooses to provide.
+
+Examples:
+
+role
+skills
+professional background
+preferred response length
+preferred response style
+languages
+custom instructions
+
+The AI response generator can use this information when authorized.
+
+Avoid silently inferring sensitive personal characteristics.
+
+---
+
+# 14. MEETING MEMORY
+
+Persist useful meeting information:
+
+meeting
+participants
+transcript
+summary
+decisions
+action items
+questions
+commitments
+risks
+
+Do not simply place unlimited conversation history into every prompt.
+
+Implement retrieval-based meeting memory.
+
+When preparing context for a meeting, retrieve only relevant historical information.
+
+---
+
+# 15. MULTILINGUAL SUPPORT
+
+Architecture:
+
+Speech
+→ language detection
+→ transcription
+→ normalized language
+→ intent understanding
+→ response generation
+→ optional translation
+
+Support user-selected:
+
+input language
+output language
+
+Design automatic detection as an optional feature.
+
+Do not tightly couple translation to the main reasoning pipeline.
+
+---
+
+# 16. AGENTIC ARCHITECTURE
+
+Use LangGraph to implement agents/nodes with explicit responsibilities.
+
+Initial graph:
+
+Conversation Analyzer
+→ Question Detector
+→ Intent Analyzer
+→ Context Retriever
+→ Response Generator
+→ Quality Checker
+
+Later extend with:
+
+Translation Agent
+Meeting Memory Agent
+Action Item Agent
+Integration Agent
+
+The state should contain typed fields.
+
+Do not create autonomous loops without termination conditions.
+
+Every agent execution should be traceable.
+
+---
+
+# 17. RESPONSE GENERATION
+
+Generate:
+
+short_answer
+detailed_answer
+technical_answer
+
+Response generation must consider:
+
+meeting context
+question
+intent
+retrieved knowledge
+user preferences
+conversation history
+
+The UI can switch between response modes without rebuilding unrelated state.
+
+---
+
+# 18. QUALITY AGENT
+
+Before displaying high-confidence recommendations, evaluate:
+
+Does the answer address the actual question?
+
+Is it supported by retrieved context?
+
+Does it contain unsupported claims?
+
+Is it too long?
+
+Does it contradict meeting context?
+
+Return:
+
+approved
+confidence
+issues
+corrected_response
+
+Use configurable thresholds.
+
+---
+
+# 19. POST-MEETING INTELLIGENCE
+
+When meeting stops, asynchronously generate:
+
+executive summary
+detailed summary
+decisions
+action items
+owners
+deadlines if explicitly mentioned
+open questions
+risks
+commitments
+follow-ups
+
+Never invent owners or deadlines.
+
+Use null/unknown when not stated.
+
+---
+
+# 20. SEARCH
+
+Users should be able to search:
+
+meetings
+transcripts
+questions
+decisions
+action items
+documents
+
+Implement keyword search first.
+
+Add semantic search where useful.
+
+---
+
+# 21. DASHBOARD
+
+Dashboard should show useful metrics such as:
+
+Meetings this month
+Meeting duration
+Questions detected
+AI suggestions generated
+Knowledge retrieval usage
+Action items
+Average AI latency
+Estimated AI usage/cost
+
+Avoid vanity metrics.
+
+---
+
+# 22. INTEGRATION ARCHITECTURE
+
+Create a generic integration layer.
+
+Future integrations may include:
+
+Calendar
+Email
+CRM
+Document storage
+Messaging platforms
+
+Do not implement every external integration immediately.
+
+Create one clean example integration after the architecture is stable.
+
+Secrets must be encrypted/protected appropriately.
+
+---
+
+# 23. AUTHENTICATION
+
+Implement:
+
+registration
+login
+logout
+refresh/session handling
+password hashing
+email verification architecture
+forgot password architecture
+
+Use secure cookies/tokens according to chosen architecture.
+
+Never store plaintext passwords.
+
+---
+
+# 24. AUTHORIZATION
+
+Implement RBAC.
+
+Check permissions in backend services/routes, not just frontend.
+
+Test:
+
+anonymous access
+member access
+admin access
+owner access
+cross-tenant access
+
+---
+
+# 25. SECURITY
+
+Include protections for:
+
+input validation
+file validation
+upload size
+MIME/type validation
+SQL injection
+XSS
+CSRF where relevant
+rate limiting
+WebSocket authentication
+tenant isolation
+secret management
+audit logs
+prompt injection
+malicious documents
+
+Knowledge-base documents must be treated as untrusted input.
+
+Never allow retrieved document text to override system-level instructions.
+
+---
+
+# 26. PRIVACY
+
+Provide controls for:
+
+transcript retention
+meeting deletion
+knowledge deletion
+audio retention
+data export architecture
+
+Audio recording/storage must not be silently enabled.
+
+---
+
+# 27. OBSERVABILITY
+
+Implement:
+
+structured logs
+request IDs
+meeting IDs
+agent execution IDs
+latency tracking
+LLM token tracking
+LLM error tracking
+retrieval latency
+WebSocket connection metrics
+
+Add OpenTelemetry-compatible architecture.
+
+Never log passwords, tokens, full sensitive documents, or unnecessary raw meeting content.
+
+---
+
+# 28. AI COST CONTROL
+
+Implement usage tracking.
+
+Track:
+
+STT duration
+LLM input tokens
+LLM output tokens
+embedding usage
+number of AI suggestions
+
+Create configurable limits.
+
+Implement per-user/organization quotas.
+
+---
+
+# 29. SUBSCRIPTIONS
+
+Design plans such as:
+
+FREE
+PRO
+TEAM
+
+Example feature dimensions:
+
+meeting minutes/month
+knowledge storage
+AI suggestions
+languages
+team members
+meeting history
+
+Keep billing provider behind an abstraction.
+
+Do not make billing logic dependent on frontend checks.
+
+---
+
+# 30. TESTING STRATEGY
+
+Backend:
+
+pytest
+unit tests
+integration tests
+API tests
+authorization tests
+RAG tests
+agent tests
+WebSocket tests
+
+Frontend:
+
+component tests
+important workflow tests
+
+End-to-end:
+
+login
+create meeting
+start meeting
+receive transcript
+detect question
+receive AI suggestion
+stop meeting
+view summary
+
+Mock external AI providers in automated tests.
+
+Tests must not require paid APIs.
+
+---
+
+# 31. DEVELOPMENT MODES
+
+Support:
+
+MOCK AI MODE
+
+Allows entire system to run without external API keys.
+
+LOCAL AI MODE
+
+Uses Ollama/local providers where supported.
+
+CLOUD AI MODE
+
+Uses configured hosted providers.
+
+This is critical for development and demonstrations.
+
+---
+
+# 32. PERFORMANCE TARGETS
+
+Instrument these rather than pretending guarantees.
+
+Measure:
+
+audio → partial transcript latency
+final transcript → question detection
+question → intent
+retrieval latency
+LLM generation latency
+total suggestion latency
+
+Use streaming wherever it improves UX.
+
+---
+
+# 33. ERROR HANDLING
+
+Frontend must gracefully handle:
+
+microphone denied
+WebSocket disconnected
+STT unavailable
+LLM unavailable
+translation unavailable
+knowledge retrieval failure
+rate limit reached
+quota reached
+
+One failed AI component should not unnecessarily terminate the meeting.
+
+---
+
+# 34. CI/CD
+
+GitHub Actions should eventually run:
+
+backend formatting/lint
+backend tests
+frontend lint
+frontend type checking
+frontend tests
+build verification
+
+No deployment should proceed when required checks fail.
+
+---
+
+# 35. DOCKER
+
+Create development containers for:
+
+frontend
+backend
+PostgreSQL + pgvector
+Redis
+worker if required
+
+Provide health checks.
+
+Use persistent volumes for development data.
+
+---
+
+# 36. AWS PRODUCTION DESIGN
+
+Prepare production deployment documentation for an AWS architecture.
+
+Start with a cost-conscious architecture.
+
+Then document scalable evolution.
+
+Potential services:
+
+Route 53
+CloudFront
+ALB
+ECS/Fargate or EC2
+RDS PostgreSQL
+ElastiCache Redis
+S3
+CloudWatch
+Secrets Manager
+ECR
+
+Do not provision expensive infrastructure automatically.
+
+Use infrastructure-as-code only after application architecture stabilizes.
+
+---
+
+# 37. DOCUMENTATION
+
+Maintain:
+
+README.md
+
+docs/
+architecture.md
+ai-architecture.md
+rag.md
+realtime-audio.md
+database.md
+security.md
+privacy.md
+testing.md
+deployment.md
+api.md
+
+Add Mermaid diagrams where useful.
+
+---
+
+# 38. EXACT 40-COMMIT ROADMAP
+
+Follow this order.
+
+## COMMIT 01 — Repository & Architecture Foundation
+
+Create monorepo structure.
+
+Initialize frontend/backend.
+
+Add README.
+
+Add environment examples.
+
+Document architecture.
+
+Commit:
+
+`chore: initialize MeetBridge AI monorepo architecture`
+
+---
+
+## COMMIT 02 — Local Infrastructure
+
+Add Docker Compose.
+
+PostgreSQL + pgvector.
+
+Redis.
+
+Health checks.
+
+Commit:
+
+`chore: add local postgres pgvector and redis infrastructure`
+
+---
+
+## COMMIT 03 — FastAPI Backend Foundation
+
+FastAPI application.
+
+Configuration.
+
+Logging.
+
+Health endpoint.
+
+Error handling.
+
+Commit:
+
+`feat: establish FastAPI backend foundation`
+
+---
+
+## COMMIT 04 — Database Foundation
+
+SQLAlchemy.
+
+Alembic.
+
+Base models.
+
+Database sessions.
+
+First migration.
+
+Commit:
+
+`feat: establish database and migration layer`
+
+---
+
+## COMMIT 05 — Frontend Foundation
+
+Next.js layout.
+
+Navigation.
+
+Theme.
+
+Reusable components.
+
+API configuration.
+
+Commit:
+
+`feat: establish MeetBridge web application`
+
+---
+
+## COMMIT 06 — Authentication Backend
+
+Registration.
+
+Login.
+
+Password hashing.
+
+Session/token architecture.
+
+Tests.
+
+Commit:
+
+`feat: implement secure authentication backend`
+
+---
+
+## COMMIT 07 — Authentication Frontend
+
+Login/register pages.
+
+Protected routes.
+
+Session state.
+
+Logout.
+
+Commit:
+
+`feat: add frontend authentication experience`
+
+---
+
+## COMMIT 08 — Multi-Tenant Organizations
+
+Organizations.
+
+Memberships.
+
+Roles.
+
+Tenant middleware/service.
+
+Cross-tenant tests.
+
+Commit:
+
+`feat: implement multi-tenant workspace architecture`
+
+---
+
+## COMMIT 09 — SaaS Dashboard Shell
+
+Dashboard.
+
+Sidebar.
+
+Workspace switcher.
+
+User settings.
+
+Responsive layout.
+
+Commit:
+
+`feat: build SaaS dashboard foundation`
+
+---
+
+## COMMIT 10 — Meeting Domain
+
+Meeting models.
+
+CRUD APIs.
+
+Meeting list/detail UI.
+
+Commit:
+
+`feat: introduce meeting management domain`
+
+---
+
+## COMMIT 11 — Real-Time WebSocket Infrastructure
+
+Authenticated WebSockets.
+
+Meeting channels.
+
+Reconnect strategy.
+
+Heartbeat.
+
+Tests.
+
+Commit:
+
+`feat: add authenticated real-time meeting transport`
+
+---
+
+## COMMIT 12 — Browser Microphone Capture
+
+Microphone permissions.
+
+Audio capture.
+
+Start/pause/stop.
+
+Visible recording state.
+
+Commit:
+
+`feat: implement browser meeting audio capture`
+
+---
+
+## COMMIT 13 — Streaming Audio Backend
+
+Receive audio chunks.
+
+Audio session management.
+
+Validation.
+
+Temporary buffering.
+
+Commit:
+
+`feat: add real-time audio ingestion pipeline`
+
+---
+
+## COMMIT 14 — Speech Provider Architecture
+
+SpeechToTextProvider interface.
+
+Mock STT.
+
+Provider adapter structure.
+
+Streaming transcript events.
+
+Commit:
+
+`feat: introduce pluggable speech-to-text providers`
+
+---
+
+## COMMIT 15 — Live Transcript Experience
+
+Display partial/final transcripts.
+
+Transcript persistence.
+
+Timestamps.
+
+Speaker placeholders.
+
+Commit:
+
+`feat: deliver persistent live meeting transcription`
+
+---
+
+## COMMIT 16 — LLM Provider Layer
+
+LLMProvider abstraction.
+
+Mock provider.
+
+Ollama adapter.
+
+Hosted-provider adapter architecture.
+
+Structured outputs.
+
+Commit:
+
+`feat: introduce provider-agnostic LLM layer`
+
+---
+
+## COMMIT 17 — Intelligent Question Detection
+
+Transcript buffering.
+
+Heuristics.
+
+LLM fallback.
+
+Confidence scoring.
+
+Commit:
+
+`feat: detect questions from live conversation`
+
+---
+
+## COMMIT 18 — Intent Understanding
+
+Structured intent analysis.
+
+Question purpose.
+
+Expected answer type.
+
+Important topics.
+
+Commit:
+
+`feat: add real-time question intent understanding`
+
+---
+
+## COMMIT 19 — Real-Time Copilot UI
+
+Question card.
+
+What are they asking?
+
+Why?
+
+Key points.
+
+Suggestion placeholder.
+
+Commit:
+
+`feat: build real-time meeting copilot interface`
+
+---
+
+## COMMIT 20 — AI Suggested Responses
+
+Short.
+
+Detailed.
+
+Technical.
+
+Streaming responses where appropriate.
+
+Commit:
+
+`feat: generate contextual real-time meeting responses`
+
+---
+
+## COMMIT 21 — Knowledge Base Domain
+
+Knowledge bases.
+
+Documents.
+
+Permissions.
+
+Upload APIs/UI.
+
+Commit:
+
+`feat: introduce personal and workspace knowledge bases`
+
+---
+
+## COMMIT 22 — Document Processing Pipeline
+
+PDF/DOCX/TXT/MD extraction.
+
+Validation.
+
+Cleaning.
+
+Chunking.
+
+Background processing.
+
+Commit:
+
+`feat: build asynchronous document ingestion pipeline`
+
+---
+
+## COMMIT 23 — Embeddings & pgvector
+
+Embedding provider.
+
+Vector schema/indexes.
+
+Chunk embeddings.
+
+Semantic retrieval.
+
+Commit:
+
+`feat: add semantic knowledge retrieval with pgvector`
+
+---
+
+## COMMIT 24 — Production RAG Pipeline
+
+Query transformation.
+
+Metadata filters.
+
+Hybrid retrieval.
+
+Reranking.
+
+Context construction.
+
+Citations.
+
+Commit:
+
+`feat: implement grounded hybrid RAG pipeline`
+
+---
+
+## COMMIT 25 — Knowledge-Aware Meeting Answers
+
+Connect meeting questions to RAG.
+
+Display source evidence.
+
+Fallback when knowledge is unavailable.
+
+Commit:
+
+`feat: ground meeting suggestions in user knowledge`
+
+---
+
+## COMMIT 26 — Personalization
+
+User AI profile.
+
+Role.
+
+Skills.
+
+Languages.
+
+Response preferences.
+
+Custom instructions.
+
+Commit:
+
+`feat: personalize copilot responses with user context`
+
+---
+
+## COMMIT 27 — LangGraph Meeting Agent
+
+Typed state.
+
+Conversation analyzer.
+
+Question detector.
+
+Intent analyzer.
+
+Retriever.
+
+Response generator.
+
+Commit:
+
+`feat: orchestrate meeting intelligence with LangGraph`
+
+---
+
+## COMMIT 28 — AI Quality & Guardrail Agent
+
+Answer validation.
+
+Groundedness checks.
+
+Prompt injection defenses.
+
+Confidence.
+
+Correction path.
+
+Commit:
+
+`feat: add AI quality controls and guardrails`
+
+---
+
+## COMMIT 29 — Multilingual Meeting Intelligence
+
+Language configuration.
+
+Language detection abstraction.
+
+Translation provider.
+
+Translated transcript/response.
+
+Commit:
+
+`feat: enable multilingual meeting assistance`
+
+---
+
+## COMMIT 30 — Meeting Memory
+
+Historical meeting retrieval.
+
+Relevant memory search.
+
+Conversation context.
+
+Previous decisions/commitments.
+
+Commit:
+
+`feat: implement retrieval-based meeting memory`
+
+---
+
+## COMMIT 31 — Post-Meeting Intelligence
+
+Summary.
+
+Decisions.
+
+Action items.
+
+Risks.
+
+Commitments.
+
+Follow-ups.
+
+Commit:
+
+`feat: generate structured post-meeting intelligence`
+
+---
+
+## COMMIT 32 — Search & Meeting History
+
+Full-text search.
+
+Semantic meeting search.
+
+Transcript search.
+
+Action-item filtering.
+
+Commit:
+
+`feat: add intelligent meeting and knowledge search`
+
+---
+
+## COMMIT 33 — Integration Framework
+
+Generic integration architecture.
+
+Secure credential model.
+
+One sample integration.
+
+Integration UI.
+
+Commit:
+
+`feat: establish external integration framework`
+
+---
+
+## COMMIT 34 — Analytics & Usage Metering
+
+Meeting metrics.
+
+AI usage.
+
+Token counts.
+
+STT minutes.
+
+Latency.
+
+Cost estimation.
+
+Dashboard.
+
+Commit:
+
+`feat: add AI usage analytics and observability metrics`
+
+---
+
+## COMMIT 35 — SaaS Plans & Quotas
+
+FREE/PRO/TEAM.
+
+Usage limits.
+
+Feature gates.
+
+Backend enforcement.
+
+Subscription abstraction.
+
+Commit:
+
+`feat: implement SaaS plans quotas and usage controls`
+
+---
+
+## COMMIT 36 — Security & Privacy Hardening
+
+RBAC audit.
+
+Tenant isolation audit.
+
+Rate limits.
+
+Secure uploads.
+
+Audit logs.
+
+Retention controls.
+
+Deletion workflows.
+
+Commit:
+
+`security: harden tenant privacy and AI data protection`
+
+---
+
+## COMMIT 37 — AI Evaluation Framework
+
+RAG evaluation dataset.
+
+Retrieval metrics.
+
+Answer evaluation.
+
+Agent tests.
+
+Latency/cost reports.
+
+Commit:
+
+`test: establish AI and RAG evaluation framework`
+
+---
+
+## COMMIT 38 — Complete Automated Testing
+
+Backend integration suite.
+
+WebSocket tests.
+
+Frontend tests.
+
+E2E critical flow.
+
+Mocks.
+
+Commit:
+
+`test: complete end-to-end MeetBridge quality suite`
+
+---
+
+## COMMIT 39 — CI/CD, Containers & Production Readiness
+
+Production Dockerfiles.
+
+GitHub Actions.
+
+Build checks.
+
+Environment validation.
+
+Observability configuration.
+
+Commit:
+
+`devops: prepare MeetBridge AI for production delivery`
+
+---
+
+## COMMIT 40 — AWS Architecture & Final Release
+
+AWS deployment documentation.
+
+Architecture diagrams.
+
+Production checklist.
+
+Security checklist.
+
+Demo data.
+
+Demo walkthrough.
+
+API documentation.
+
+Final README.
+
+Version project as v1.0.0.
+
+Commit:
+
+`release: complete MeetBridge AI SaaS v1.0`
+
+---
+
+# 39. CODING QUALITY RULES
+
+Always:
+
+Use type hints.
+
+Use meaningful names.
+
+Keep functions focused.
+
+Use dependency injection where useful.
+
+Separate business logic from routes.
+
+Separate AI provider code from business logic.
+
+Avoid global database connections.
+
+Use async safely.
+
+Use database transactions correctly.
+
+Use repository/service layers where they provide real value.
+
+Add docstrings for complex behavior.
+
+Do not add unnecessary abstraction.
+
+Never commit secrets.
+
+Never hardcode API keys.
+
+Use `.env.example`.
+
+Never silently swallow exceptions.
+
+Use structured exceptions.
+
+---
+
+# 40. AI ENGINEERING RULES
+
+Prompts must live in dedicated modules/files.
+
+Prompts must be versionable.
+
+Structured outputs must use Pydantic.
+
+Track:
+
+model
+provider
+prompt version
+latency
+tokens
+status
+
+Use deterministic code instead of LLMs whenever deterministic logic solves the problem reliably.
+
+Do not call an LLM for every audio fragment.
+
+Cache safe reusable results.
+
+Use smaller/cheaper models for classification when appropriate.
+
+Use stronger models only for complex reasoning.
+
+---
+
+# 41. RAG QUALITY RULES
+
+Do not implement naive:
+
+document → fixed chunks → embeddings → top-5 → LLM
+
+and call it complete.
+
+Experiment with:
+
+chunk size
+overlap
+semantic boundaries
+query rewriting
+metadata
+hybrid retrieval
+top-k
+reranking
+context compression
+
+Measure retrieval quality.
+
+Keep source metadata.
+
+Make citations traceable.
+
+---
+
+# 42. REAL-TIME PERFORMANCE RULES
+
+Never block the audio ingestion path while waiting for an LLM.
+
+Separate:
+
+audio ingestion
+transcription
+AI analysis
+response generation
+
+Use queues/events/tasks appropriately.
+
+Implement cancellation when a newer question supersedes an old generation.
+
+Do not allow unlimited AI requests from partial transcripts.
+
+---
+
+# 43. GIT RULES
+
+Before every commit:
+
+Run relevant tests.
+
+Run lint.
+
+Check formatting.
+
+Ensure no secrets are staged.
+
+Review git diff.
+
+The commit must contain ONLY that stage's work.
+
+Do NOT generate 40 commits automatically.
+
+I will explicitly say:
+
+`next commit`
+
+before you continue.
+
+At the completion of every stage, respond with:
+
+COMMIT XX COMPLETE
+
+Implemented:
+...
+
+Tests:
+...
+
+How to verify:
+...
+
+Commit message:
+`...`
+
+Next:
+COMMIT XX+1 — ...
+
+Then STOP.
+
+---
+
+# 44. LEARNING REQUIREMENT
+
+This project is also intended to demonstrate senior AI engineering skills.
+
+Whenever introducing an important technology, briefly explain:
+
+WHAT it is.
+
+WHY MeetBridge needs it.
+
+WHERE it sits in the architecture.
+
+WHAT problem it solves.
+
+Do not give long theoretical explanations unless requested.
+
+Keep implementation production-oriented.
+
+---
+
+# 45. FINAL EXPECTED SYSTEM
+
+At the end of Commit 40, the following scenario should work:
+
+User registers.
+
+→ Creates workspace.
+
+→ Configures AI preferences.
+
+→ Uploads resume/company/project documentation.
+
+→ Documents are processed and embedded.
+
+→ User creates meeting.
+
+→ Gives microphone permission.
+
+→ Starts listening.
+
+→ Another participant speaks.
+
+→ Audio streams to backend.
+
+→ Speech is transcribed.
+
+→ Question is detected.
+
+→ Intent is analyzed.
+
+→ Relevant personal/company knowledge is retrieved.
+
+→ LangGraph orchestrates reasoning.
+
+→ Suggested answer appears in real time.
+
+→ User switches between short/detailed/technical responses.
+
+→ Different language can be translated.
+
+→ Meeting continues with context.
+
+→ Meeting stops.
+
+→ Summary is generated.
+
+→ Decisions and action items are extracted.
+
+→ Meeting becomes searchable memory.
+
+→ Future meetings can retrieve relevant historical context.
+
+→ Usage is metered.
+
+→ Tenant security is enforced.
+
+→ AI activity is observable/evaluable.
+
+→ Application runs locally using Docker.
+
+→ Application has CI/CD and documented AWS production deployment.
+
+---
+
+# 46. STARTING INSTRUCTION
+
+Do not implement anything beyond Commit 01.
+
+First:
+
+1. Analyze the architecture.
+2. Identify any compatibility issues with the latest stable versions of the chosen technologies.
+3. Create the repository structure.
+4. Initialize frontend and backend.
+5. Add `.gitignore`.
+6. Add `.env.example`.
+7. Create the initial README.
+8. Create `docs/architecture.md`.
+9. Add a Mermaid high-level architecture diagram.
+10. Verify frontend/backend start successfully.
+11. Show the resulting directory tree.
+12. Show commands I need to run locally.
+13. Give the exact commit command.
+
+Then report:
+
+`COMMIT 01 COMPLETE`
+
+and STOP.
+
+Wait until I say:
+
+`next commit`
