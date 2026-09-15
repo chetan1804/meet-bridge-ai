@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.questions import router as questions_router
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -10,6 +11,8 @@ app = FastAPI(
     version="0.1.0",
     description="MeetBridge AI backend API scaffold",
 )
+
+app.include_router(questions_router, prefix=settings.api_prefix)
 
 app.add_middleware(
     CORSMiddleware,
