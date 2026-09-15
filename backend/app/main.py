@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.conversation import router as conversation_router
 from app.api.routes.questions import router as questions_router
 from app.core.config import get_settings
 
@@ -13,6 +14,7 @@ app = FastAPI(
 )
 
 app.include_router(questions_router, prefix=settings.api_prefix)
+app.include_router(conversation_router, prefix=settings.api_prefix)
 
 app.add_middleware(
     CORSMiddleware,
