@@ -7,7 +7,10 @@ class MeetingStateService:
     """Minimal in-memory meeting state used for live current-question and transcript tracking."""
 
     def __init__(self) -> None:
-        self.state = MeetingContextState(
+        self.reset()
+
+    def _build_default_state(self) -> MeetingContextState:
+        return MeetingContextState(
             meeting_id="demo-meeting",
             title="Q3 Product Review",
             transcript=[
@@ -19,6 +22,10 @@ class MeetingStateService:
             important_topics=["evaluation dataset", "chunking strategy", "retrieval metrics"],
             suggested_answer="First, I would determine whether the problem comes from retrieval quality, chunk design, or the downstream generation step.",
         )
+
+    def reset(self) -> MeetingContextState:
+        self.state = self._build_default_state()
+        return self.state
 
     def get_state(self) -> MeetingContextState:
         return self.state
@@ -40,3 +47,6 @@ class MeetingStateService:
         if cleaned and cleaned not in self.state.transcript:
             self.state.transcript.append(cleaned)
         return self.state
+
+
+service = MeetingStateService()

@@ -1,10 +1,9 @@
 from fastapi import APIRouter
 
 from app.schemas.meeting_state import MeetingContextState, MeetingStateResponse
-from app.services.meeting_state_service import MeetingStateService
+from app.services.meeting_state_service import service
 
 router = APIRouter(prefix="/meeting", tags=["meeting"])
-service = MeetingStateService()
 
 
 @router.get("/state", response_model=MeetingStateResponse)

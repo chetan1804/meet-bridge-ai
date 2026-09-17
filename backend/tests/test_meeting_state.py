@@ -1,9 +1,14 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.meeting_state_service import service
 
 
 client = TestClient(app)
+
+
+def setup_function() -> None:
+    service.reset()
 
 
 def test_get_meeting_state() -> None:
