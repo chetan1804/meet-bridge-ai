@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 
 const fallbackTranscript = [
   "Product lead: We need a lower-friction plan for meeting follow-up.",
@@ -29,7 +29,49 @@ export default function Home() {
   const [answer, setAnswer] = useState<string>(
     "First, I would determine whether the problem comes from retrieval quality, chunk design, or the downstream generation step. Then I would measure recall, precision, and latency on a labeled eval set before making targeted changes to indexing, metadata, and reranking.",
   );
+  const [importantTopics, setImportantTopics] =
+    useState<string[]>(fallbackKeyPoints);
+  const [meetingTitle, setMeetingTitle] = useState("Q3 Product Review");
+  const [listening, setListening] = useState(true);
+  const [connected, setConnected] = useState(true);
   const [loading, setLoading] = useState(false);
+
+  const refreshMeetingState = useCallback(async () => {
+    try {
+      const response = await fetch("http://localhost:8000/api/meeting/state");
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json();
+      if (data.transcript?.length) {
+        setTranscript(data.transcript);
+      }
+      if (data.current_question) {
+        setCurrentQuestion(data.current_question);
+      }
+      if (data.why_they_are_asking) {
+        setExplanation(data.why_they_are_asking);
+      }
+      if (data.suggested_answer) {
+        setAnswer(data.suggested_answer);
+      }
+      if (data.important_topics?.length) {
+        setImportantTopics(data.important_topics);
+      }
+      if (data.title) {
+        setMeetingTitle(data.title);
+      }
+      if (typeof data.listening === "boolean") {
+        setListening(data.listening);
+      }
+      if (typeof data.connected === "boolean") {
+        setConnected(data.connected);
+      }
+    } catch {
+      // Keep the fallback state until the backend is ready.
+    }
+  }, []);
 
   useEffect(() => {
     const fetchContext = async () => {
@@ -60,8 +102,16 @@ export default function Home() {
       }
     };
 
-    fetchContext();
-  }, []);
+    void fetchContext();
+    void refreshMeetingState();
+
+    const interval = setInterval(() => {
+      void fetchContext();
+      void refreshMeetingState();
+    }, 2000);
+
+    return () => clearInterval(interval);
+  }, [refreshMeetingState]);
 
   const handleAnalyzeSampleQuestion = async () => {
     setLoading(true);
@@ -95,6 +145,7 @@ export default function Home() {
       setTranscript((prev) => [...prev, sampleQuestion]);
     } finally {
       setLoading(false);
+      await refreshMeetingState();
     }
   };
 
@@ -111,12 +162,22 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <span className="inline-flex items-center gap-2 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-emerald-300">
-              <span className="h-2.5 w-2.5 rounded-full bg-emerald-400" />
-              Listening
+            <span
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 ${
+                listening
+                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
+                  : "border-slate-700 bg-slate-800 text-slate-300"
+              }`}
+            >
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${
+                  listening ? "bg-emerald-400" : "bg-slate-500"
+                }`}
+              />
+              {listening ? "Listening" : "Paused"}
             </span>
             <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5">
-              Connected
+              {connected ? "Connected" : "Disconnected"}
             </span>
           </div>
         </header>
@@ -126,7 +187,7 @@ export default function Home() {
             <div className="mb-4 flex items-center justify-between">
               <div>
                 <p className="text-sm text-slate-400">Meeting title</p>
-                <h2 className="text-2xl font-semibold">Q3 Product Review</h2>
+                <h2 className="text-2xl font-semibold">{meetingTitle}</h2>
               </div>
               <div className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-right">
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
@@ -168,7 +229,7 @@ export default function Home() {
                 Key points
               </p>
               <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                {fallbackKeyPoints.map((point) => (
+                {importantTopics.map((point) => (
                   <li key={point}>{point}</li>
                 ))}
               </ul>
