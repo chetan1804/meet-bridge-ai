@@ -19,6 +19,15 @@ const fallbackKeyPoints = [
 
 const sampleQuestion = "How would you improve RAG accuracy?";
 
+const defaultMeetingInsights = {
+  summary: "The meeting focused on retrieval quality and follow-up planning.",
+  decisions: ["We should evaluate retrieval quality before changing prompts."],
+  action_items: [
+    "Follow up on retrieval quality and meeting experience improvements.",
+  ],
+  open_questions: ["How would you improve RAG accuracy?"],
+};
+
 export default function Home() {
   const [transcript, setTranscript] = useState<string[]>(fallbackTranscript);
   const [currentQuestion, setCurrentQuestion] =
@@ -31,6 +40,9 @@ export default function Home() {
   );
   const [importantTopics, setImportantTopics] =
     useState<string[]>(fallbackKeyPoints);
+  const [meetingInsights, setMeetingInsights] = useState(
+    defaultMeetingInsights,
+  );
   const [meetingTitle, setMeetingTitle] = useState("Q3 Product Review");
   const [listening, setListening] = useState(true);
   const [connected, setConnected] = useState(true);
@@ -58,6 +70,20 @@ export default function Home() {
       }
       if (data.important_topics?.length) {
         setImportantTopics(data.important_topics);
+      }
+      if (data.meeting_insights) {
+        setMeetingInsights({
+          summary:
+            data.meeting_insights.summary || defaultMeetingInsights.summary,
+          decisions:
+            data.meeting_insights.decisions || defaultMeetingInsights.decisions,
+          action_items:
+            data.meeting_insights.action_items ||
+            defaultMeetingInsights.action_items,
+          open_questions:
+            data.meeting_insights.open_questions ||
+            defaultMeetingInsights.open_questions,
+        });
       }
       if (data.title) {
         setMeetingTitle(data.title);
@@ -235,6 +261,54 @@ export default function Home() {
               </ul>
             </div>
           </aside>
+        </section>
+
+        <section className="grid gap-6 lg:grid-cols-2">
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+              Meeting summary
+            </p>
+            <p className="mt-3 text-base leading-7 text-slate-200">
+              {meetingInsights.summary}
+            </p>
+
+            <div className="mt-5 space-y-4">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Decisions
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                  {meetingInsights.decisions.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+            <div>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Action items
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                {meetingInsights.action_items.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+
+            <div className="mt-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Open questions
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                {meetingInsights.open_questions.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          </div>
         </section>
 
         <section className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
