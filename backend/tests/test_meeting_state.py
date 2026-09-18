@@ -40,3 +40,13 @@ def test_update_meeting_state() -> None:
     payload = response.json()
     assert payload["current_question"] == "What is the main bottleneck?"
     assert payload["important_topics"] == ["retrieval latency", "indexing"]
+
+
+def test_meeting_state_includes_structured_insights() -> None:
+    response = client.get("/api/meeting/state")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "meeting_insights" in payload
+    assert "retrieval" in payload["meeting_insights"]["summary"].lower()
+    assert payload["meeting_insights"]["open_questions"]
