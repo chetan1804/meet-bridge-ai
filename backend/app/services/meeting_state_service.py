@@ -1,7 +1,7 @@
 from __future__ import annotations
 
-from app.schemas.meeting_insights import MeetingInsights
 from app.schemas.meeting_state import MeetingContextState
+from app.services.knowledge_service import KnowledgeService
 from app.services.meeting_insights_service import MeetingInsightsService
 
 
@@ -10,6 +10,7 @@ class MeetingStateService:
 
     def __init__(self) -> None:
         self.insights_service = MeetingInsightsService()
+        self.knowledge_service = KnowledgeService()
         self.reset()
 
     def _build_default_state(self) -> MeetingContextState:
@@ -18,14 +19,20 @@ class MeetingStateService:
             "Engineer: We should evaluate the retrieval quality before changing prompts.",
             "PM: Could we improve the experience for long calls and transcripts?",
         ]
+        base_question = "How would you improve RAG accuracy?"
+        evidence = [
+            "Measure recall and precision on a labeled dataset before changing chunking or reranking.",
+            "Evaluate retrieval quality, then adjust chunking strategy and ranking heuristics if needed.",
+        ]
         return MeetingContextState(
             meeting_id="demo-meeting",
             title="Q3 Product Review",
             transcript=transcript,
-            current_question="How would you improve RAG accuracy?",
+            current_question=base_question,
             why_they_are_asking="They want a practical approach for diagnosing and improving retrieval quality in a production system.",
             important_topics=["evaluation dataset", "chunking strategy", "retrieval metrics"],
             suggested_answer="First, I would determine whether the problem comes from retrieval quality, chunk design, or the downstream generation step.",
+            retrieved_evidence=evidence,
             meeting_insights=self.insights_service.build_insights(transcript),
         )
 
@@ -42,6 +49,15 @@ class MeetingStateService:
             self.state.why_they_are_asking = why
         if topics:
             self.state.important_topics = topics
+
+        knowledge_docs = [
+            {"title": "Retrieval quality tuning", "content": "Measure recall and precision on a labeled dataset before changing chunking or reranking."},
+            {"title": "Chunking best practices", "content": "Evaluate retrieval quality after chunk-size changes and compare performance across query types."},
+            {"title": "Meeting summary workflow", "content": "Summaries should stay concise, evidence-based, and action-oriented for fast follow-up."},
+        ]
+        self.state.retrieved_evidence = [
+            item.content for item in self.knowledge_service.retrieve(question, knowledge_docs)[:2]
+        ]
 
         self.state.suggested_answer = self.state.suggested_answer
         if intent:

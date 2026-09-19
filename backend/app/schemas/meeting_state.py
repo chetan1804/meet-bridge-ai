@@ -11,6 +11,7 @@ class MeetingContextState(BaseModel):
     important_topics: list[str] = Field(default_factory=list)
     suggested_answer: str | None = None
     transcript: list[str] = Field(default_factory=list)
+    retrieved_evidence: list[str] = Field(default_factory=list)
     meeting_insights: MeetingInsights = Field(default_factory=lambda: MeetingInsights(
         summary="The meeting focused on retrieval quality and follow-up planning.",
         decisions=["We should evaluate retrieval quality before changing prompts."],

@@ -50,3 +50,13 @@ def test_meeting_state_includes_structured_insights() -> None:
     assert "meeting_insights" in payload
     assert "retrieval" in payload["meeting_insights"]["summary"].lower()
     assert payload["meeting_insights"]["open_questions"]
+
+
+def test_meeting_state_includes_retrieved_evidence() -> None:
+    response = client.get("/api/meeting/state")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert "retrieved_evidence" in payload
+    assert payload["retrieved_evidence"]
+    assert any("retrieval" in item.lower() or "precision" in item.lower() for item in payload["retrieved_evidence"])
