@@ -42,10 +42,20 @@ class MeetingStateService:
             self.state.why_they_are_asking = why
         if topics:
             self.state.important_topics = topics
+
+        self.state.suggested_answer = self.state.suggested_answer
         if intent:
-            self.state.suggested_answer = (
-                f"The likely intent is {intent.lower()}. Focus on the most relevant evidence and keep the answer concise with clear next steps."
+            self.state.suggested_answer = self.insights_service.get_suggested_response(
+                question=question,
+                intent=intent,
+                important_topics=topics or self.state.important_topics,
             )
+        elif question:
+            self.state.suggested_answer = self.insights_service.get_suggested_response(
+                question=question,
+                important_topics=topics or self.state.important_topics,
+            )
+
         self.state.meeting_insights = self.insights_service.build_insights(self.state.transcript)
         return self.state
 

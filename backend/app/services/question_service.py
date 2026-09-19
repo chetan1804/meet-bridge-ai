@@ -73,6 +73,40 @@ class QuestionService:
             confidence=confidence,
         )
 
+    def build_suggested_response(
+        self,
+        question: str,
+        intent: str | None = None,
+        important_topics: list[str] | None = None,
+    ) -> str:
+        q = question.strip()
+        lowered = q.lower()
+        topics = important_topics or []
+
+        if not q:
+            return "I would first clarify the goal, then recommend the simplest, most measurable next step."
+
+        if intent and "improve" in intent.lower():
+            topic_text = ", ".join(topics) if topics else "retrieval quality"
+            return (
+                "I would start by measuring the current retrieval quality and isolating whether the issue is chunking, indexing, or ranking. "
+                f"Then I would test the highest-impact changes around {topic_text}, validate them on a small benchmark, and only scale up once the metrics improve."
+            )
+
+        if any(keyword in lowered for keyword in ("what", "why", "when", "where")):
+            return (
+                "I would explain the context first, separate facts from assumptions, and answer with the most relevant evidence before suggesting a next step."
+            )
+
+        if any(keyword in lowered for keyword in ("can", "could", "would", "should")):
+            return (
+                "I would assess feasibility by checking constraints, trade-offs, and the simplest path to a working solution before recommending a final approach."
+            )
+
+        return (
+            "I would focus on the most likely root cause, validate the assumption with the clearest evidence, and recommend the smallest measurable next step."
+        )
+
     def _infer_question_type(self, text: str) -> str:
         lowered = text.lower()
         if re.match(r"^(how|what|why|when|where|who|which|can|could|would|should|do|does|did|is|are|am|was|were|have|has|had|may|might)\b", lowered):

@@ -3,6 +3,7 @@ from __future__ import annotations
 import re
 
 from app.schemas.meeting_insights import MeetingInsights
+from app.services.question_service import QuestionService
 
 
 class MeetingInsightsService:
@@ -36,6 +37,18 @@ class MeetingInsightsService:
             decisions=decisions,
             action_items=action_items,
             open_questions=open_questions,
+        )
+
+    def get_suggested_response(
+        self,
+        question: str,
+        intent: str | None = None,
+        important_topics: list[str] | None = None,
+    ) -> str:
+        return QuestionService().build_suggested_response(
+            question=question,
+            intent=intent,
+            important_topics=important_topics,
         )
 
     def _clean_line(self, line: str) -> str:
