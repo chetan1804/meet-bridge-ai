@@ -1,9 +1,19 @@
+from __future__ import annotations
+
+from uuid import uuid4
+
 from pydantic import BaseModel, Field
 
 
-class KnowledgeDocument(BaseModel):
-    title: str = Field(default="Untitled")
-    content: str = Field(..., min_length=1)
+class KnowledgeDocumentCreate(BaseModel):
+    title: str = Field(..., min_length=1, description="Document title")
+    content: str = Field(..., min_length=1, description="Knowledge base content")
+    source: str = Field(default="manual", min_length=1, description="Source label")
+    metadata: dict[str, str] = Field(default_factory=dict, description="Optional metadata")
+
+
+class KnowledgeDocument(KnowledgeDocumentCreate):
+    id: str = Field(default_factory=lambda: uuid4().hex)
 
 
 class KnowledgeRetrievalRequest(BaseModel):
