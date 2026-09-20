@@ -28,6 +28,11 @@ const defaultMeetingInsights = {
   open_questions: ["How would you improve RAG accuracy?"],
 };
 
+const defaultRetrievedEvidence = [
+  "Measure recall and precision on a labeled dataset before changing chunking or reranking.",
+  "Evaluate retrieval quality, then adjust chunking strategy and ranking heuristics if needed.",
+];
+
 export default function Home() {
   const [transcript, setTranscript] = useState<string[]>(fallbackTranscript);
   const [currentQuestion, setCurrentQuestion] =
@@ -40,6 +45,9 @@ export default function Home() {
   );
   const [importantTopics, setImportantTopics] =
     useState<string[]>(fallbackKeyPoints);
+  const [retrievedEvidence, setRetrievedEvidence] = useState<string[]>(
+    defaultRetrievedEvidence,
+  );
   const [meetingInsights, setMeetingInsights] = useState(
     defaultMeetingInsights,
   );
@@ -70,6 +78,9 @@ export default function Home() {
       }
       if (data.important_topics?.length) {
         setImportantTopics(data.important_topics);
+      }
+      if (data.retrieved_evidence?.length) {
+        setRetrievedEvidence(data.retrieved_evidence);
       }
       if (data.meeting_insights) {
         setMeetingInsights({
@@ -317,6 +328,17 @@ export default function Home() {
               Suggested answer
             </p>
             <p className="mt-3 text-base leading-7 text-slate-200">{answer}</p>
+
+            <div className="mt-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Retrieved evidence
+              </p>
+              <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-200">
+                {retrievedEvidence.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            </div>
           </div>
 
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
