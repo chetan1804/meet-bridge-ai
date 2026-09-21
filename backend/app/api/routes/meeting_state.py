@@ -14,11 +14,24 @@ def get_meeting_state() -> MeetingStateResponse:
 @router.post("/state", response_model=MeetingStateResponse)
 def update_meeting_state(payload: MeetingContextState) -> MeetingStateResponse:
     state = service.get_state()
-    state.current_question = payload.current_question or state.current_question
-    state.why_they_are_asking = payload.why_they_are_asking or state.why_they_are_asking
-    state.important_topics = payload.important_topics or state.important_topics
-    state.suggested_answer = payload.suggested_answer or state.suggested_answer
-    state.transcript = payload.transcript or state.transcript
+
+    if payload.current_question:
+        state.current_question = payload.current_question
+        state.why_they_are_asking = payload.why_they_are_asking or state.why_they_are_asking
+        state.important_topics = payload.important_topics or state.important_topics
+        state.suggested_answer = payload.suggested_answer or state.suggested_answer
+        state.transcript = payload.transcript or state.transcript
+        state = service.update_from_question(
+            state.current_question,
+            why=state.why_they_are_asking,
+            topics=state.important_topics,
+        )
+    else:
+        state.why_they_are_asking = payload.why_they_are_asking or state.why_they_are_asking
+        state.important_topics = payload.important_topics or state.important_topics
+        state.suggested_answer = payload.suggested_answer or state.suggested_answer
+        state.transcript = payload.transcript or state.transcript
+
     state.listening = payload.listening
     state.connected = payload.connected
     return MeetingStateResponse(**state.model_dump())

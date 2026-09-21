@@ -7,38 +7,27 @@ from app.schemas.knowledge import (
     KnowledgeRetrievalResult,
 )
 from app.services.knowledge_service import KnowledgeService
+from app.services.knowledge_store import add_knowledge_document, list_knowledge_documents
 
 router = APIRouter(prefix="/knowledge", tags=["knowledge"])
 service = KnowledgeService()
 
-_documents: list[KnowledgeDocument] = [
-    KnowledgeDocument(
-        id="demo-doc-1",
-        title="RAG tuning guide",
-        content="Measure recall and precision on a labeled dataset before changing chunking or reranking.",
-        source="internal-docs",
-        metadata={"topic": "retrieval"},
-    )
-]
-
 
 @router.get("/documents", response_model=list[KnowledgeDocument])
 def list_documents() -> list[KnowledgeDocument]:
-    return _documents
+    return list_knowledge_documents()
 
 
 @router.post("/documents", response_model=KnowledgeDocument)
 def create_document(payload: KnowledgeDocumentCreate) -> KnowledgeDocument:
-    document = KnowledgeDocument(**payload.model_dump())
-    _documents.append(document)
-    return document
+    return add_knowledge_document(payload)
 
 
 @router.post("/search", response_model=list[KnowledgeRetrievalResult])
 def search_documents(payload: KnowledgeRetrievalRequest) -> list[KnowledgeRetrievalResult]:
     candidate_documents = [
         {"title": document.title, "content": document.content}
-        for document in (payload.documents or list_documents())
+        for document in (payload.documents or list_knowledge_documents())
     ]
     matches = service.retrieve(payload.question, candidate_documents)
     return [

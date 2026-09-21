@@ -60,3 +60,36 @@ def test_meeting_state_includes_retrieved_evidence() -> None:
     assert "retrieved_evidence" in payload
     assert payload["retrieved_evidence"]
     assert any("retrieval" in item.lower() or "precision" in item.lower() for item in payload["retrieved_evidence"])
+
+
+def test_meeting_state_uses_latest_knowledge_documents() -> None:
+    create_response = client.post(
+        "/api/knowledge/documents",
+        json={
+            "title": "Chunking handbook",
+            "content": "Use smaller chunks and metadata filters to improve recall across long transcripts.",
+            "source": "internal-docs",
+        },
+    )
+    assert create_response.status_code == 200
+    created = create_response.json()
+    assert created["content"] == "Use smaller chunks and metadata filters to improve recall across long transcripts."
+
+    response = client.post(
+        "/api/meeting/state",
+        json={
+            "meeting_id": "demo-meeting",
+            "title": "Q3 Product Review",
+            "current_question": "How can we improve recall on long transcripts?",
+            "why_they_are_asking": "They want a practical retrieval improvement strategy.",
+            "important_topics": ["chunking", "metadata filtering", "recall"],
+            "suggested_answer": "Use smaller chunks and metadata filters.",
+            "transcript": ["We are reviewing long transcript recall."],
+            "listening": True,
+            "connected": True,
+        },
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert any("smaller chunks" in item.lower() for item in payload["retrieved_evidence"])
