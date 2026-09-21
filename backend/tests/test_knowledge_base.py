@@ -31,3 +31,16 @@ def test_knowledge_documents_require_content() -> None:
     )
 
     assert response.status_code == 422
+
+
+def test_search_returns_relevant_documents() -> None:
+    response = client.post(
+        "/api/knowledge/search",
+        json={"question": "How can we improve RAG accuracy?"},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert payload[0]["title"] == "RAG tuning guide"
+    assert payload[0]["score"] > 0.5
