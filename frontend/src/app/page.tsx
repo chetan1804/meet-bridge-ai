@@ -37,6 +37,7 @@ export default function Home() {
   const [transcript, setTranscript] = useState<string[]>(fallbackTranscript);
   const [currentQuestion, setCurrentQuestion] =
     useState<string>(sampleQuestion);
+  const [questionInput, setQuestionInput] = useState<string>(sampleQuestion);
   const [explanation, setExplanation] = useState<string>(
     "They want a practical approach for diagnosing and improving retrieval quality in a production system.",
   );
@@ -169,6 +170,7 @@ export default function Home() {
         const data = await response.json();
         if (data.is_question) {
           setCurrentQuestion(data.question || sampleQuestion);
+          setQuestionInput(data.question || sampleQuestion);
           setExplanation(data.why_they_are_asking || explanation);
           if (data.intent) {
             setAnswer(
@@ -183,6 +185,44 @@ export default function Home() {
     } finally {
       setLoading(false);
       await refreshMeetingState();
+    }
+  };
+
+  const handleKnowledgeSearch = async () => {
+    const query = questionInput.trim() || currentQuestion;
+    if (!query) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        "http://localhost:8000/api/knowledge/search",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ question: query }),
+        },
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const data = await response.json();
+      const nextEvidence = (
+        (data as Array<{ content?: string; title?: string }>) || []
+      )
+        .map((item) => item.content || item.title || "")
+        .filter(Boolean)
+        .slice(0, 3);
+
+      if (nextEvidence.length > 0) {
+        setRetrievedEvidence(nextEvidence);
+      }
+    } catch {
+      // Keep the existing evidence if the backend is unavailable.
     }
   };
 
@@ -259,6 +299,26 @@ export default function Home() {
                 What they are asking
               </p>
               <p className="mt-2 text-sm text-slate-200">{explanation}</p>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Search knowledge base
+              </label>
+              <div className="flex gap-2">
+                <input
+                  value={questionInput}
+                  onChange={(event) => setQuestionInput(event.target.value)}
+                  className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-0 placeholder:text-slate-500"
+                  placeholder="Ask a follow-up question"
+                />
+                <button
+                  onClick={handleKnowledgeSearch}
+                  className="rounded-lg border border-violet-500 bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
+                >
+                  Search
+                </button>
+              </div>
             </div>
 
             <div>
