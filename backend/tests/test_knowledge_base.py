@@ -44,3 +44,15 @@ def test_search_returns_relevant_documents() -> None:
     assert payload
     assert payload[0]["title"] == "RAG tuning guide"
     assert payload[0]["score"] > 0.5
+
+
+def test_upload_text_document_to_knowledge_base() -> None:
+    response = client.post(
+        "/api/knowledge/documents/upload",
+        files={"file": ("rag-notes.md", b"# RAG notes\n\nMeasure recall and precision before reranking.", "text/markdown")},
+    )
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["title"] == "rag-notes.md"
+    assert "Measure recall" in payload["content"]

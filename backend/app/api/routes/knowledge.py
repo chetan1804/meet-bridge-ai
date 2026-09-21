@@ -1,4 +1,6 @@
-from fastapi import APIRouter
+from __future__ import annotations
+
+from fastapi import APIRouter, File, UploadFile
 
 from app.schemas.knowledge import (
     KnowledgeDocument,
@@ -20,6 +22,23 @@ def list_documents() -> list[KnowledgeDocument]:
 
 @router.post("/documents", response_model=KnowledgeDocument)
 def create_document(payload: KnowledgeDocumentCreate) -> KnowledgeDocument:
+    return add_knowledge_document(payload)
+
+
+@router.post("/documents/upload", response_model=KnowledgeDocument)
+async def upload_document(file: UploadFile = File(...)) -> KnowledgeDocument:
+    content = await file.read()
+    text = content.decode("utf-8", errors="replace").strip()
+    if not text:
+        raise ValueError("Uploaded file is empty.")
+
+    cleaned = "\n".join(line.strip() for line in text.splitlines() if line.strip())
+    payload = KnowledgeDocumentCreate(
+        title=file.filename or "uploaded-document",
+        content=cleaned,
+        source="upload",
+        metadata={"format": file.content_type or "text/plain"},
+    )
     return add_knowledge_document(payload)
 
 
