@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useState } from "react";
 
+import { AppShell } from "@/components/app-shell";
+import { StatusBadge } from "@/components/status-badge";
+import { apiEndpoint } from "@/lib/api";
+
 const fallbackTranscript = [
   "Product lead: We need a lower-friction plan for meeting follow-up.",
   "Engineer: We should evaluate the retrieval quality before changing prompts.",
@@ -59,7 +63,7 @@ export default function Home() {
 
   const refreshMeetingState = useCallback(async () => {
     try {
-      const response = await fetch("http://localhost:8000/api/meeting/state");
+      const response = await fetch(apiEndpoint("/api/meeting/state"));
       if (!response.ok) {
         return;
       }
@@ -115,7 +119,7 @@ export default function Home() {
     const fetchContext = async () => {
       try {
         const response = await fetch(
-          "http://localhost:8000/api/conversation/context",
+          apiEndpoint("/api/conversation/context"),
         );
         if (!response.ok) {
           return;
@@ -156,7 +160,7 @@ export default function Home() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/api/conversation/buffer",
+        apiEndpoint("/api/conversation/buffer"),
         {
           method: "POST",
           headers: {
@@ -196,7 +200,7 @@ export default function Home() {
 
     try {
       const response = await fetch(
-        "http://localhost:8000/api/knowledge/search",
+        apiEndpoint("/api/knowledge/search"),
         {
           method: "POST",
           headers: {
@@ -227,7 +231,8 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-slate-950 px-6 py-10 text-slate-100">
+    <AppShell>
+      <main className="px-6 py-10">
       <div className="mx-auto max-w-7xl space-y-8">
         <header className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
           <div>
@@ -239,23 +244,8 @@ export default function Home() {
             </h1>
           </div>
           <div className="flex items-center gap-3 text-sm">
-            <span
-              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 ${
-                listening
-                  ? "border-emerald-500/40 bg-emerald-500/10 text-emerald-300"
-                  : "border-slate-700 bg-slate-800 text-slate-300"
-              }`}
-            >
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  listening ? "bg-emerald-400" : "bg-slate-500"
-                }`}
-              />
-              {listening ? "Listening" : "Paused"}
-            </span>
-            <span className="rounded-full border border-slate-700 bg-slate-800 px-3 py-1.5">
-              {connected ? "Connected" : "Disconnected"}
-            </span>
+            <StatusBadge label={listening ? "Listening" : "Paused"} active={listening} />
+            <StatusBadge label={connected ? "Connected" : "Disconnected"} active={connected} />
           </div>
         </header>
 
@@ -431,6 +421,7 @@ export default function Home() {
           </div>
         </section>
       </div>
-    </main>
+      </main>
+    </AppShell>
   );
 }
