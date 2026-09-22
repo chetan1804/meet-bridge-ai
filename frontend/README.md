@@ -6,6 +6,10 @@ This frontend is a Next.js application that renders the live meeting copilot she
 
 The browser API base URL is configured through `NEXT_PUBLIC_API_URL`. It defaults to `http://localhost:8000` for local development; set it in the root `.env` file when deploying the frontend separately.
 
+## Authentication
+
+The dashboard requires a user session. Start the backend and apply its migrations before registering at `/register`; the session token is kept in browser local storage for this incremental client-side implementation.
+
 ## Local development
 
 ```bash

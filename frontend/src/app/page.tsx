@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
+import { RequireAuth } from "@/components/require-auth";
 import { StatusBadge } from "@/components/status-badge";
 import { apiEndpoint } from "@/lib/api";
 
@@ -38,6 +39,14 @@ const defaultRetrievedEvidence = [
 ];
 
 export default function Home() {
+  return (
+    <RequireAuth>
+      <CopilotDashboard />
+    </RequireAuth>
+  );
+}
+
+function CopilotDashboard() {
   const [transcript, setTranscript] = useState<string[]>(fallbackTranscript);
   const [currentQuestion, setCurrentQuestion] =
     useState<string>(sampleQuestion);

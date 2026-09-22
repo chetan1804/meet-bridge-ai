@@ -1,5 +1,9 @@
+"use client";
+
 import Link from "next/link";
 import type { ReactNode } from "react";
+
+import { useAuth } from "@/lib/auth";
 
 const navigationItems = [
   { href: "/", label: "Copilot" },
@@ -8,6 +12,8 @@ const navigationItems = [
 ];
 
 export function AppShell({ children }: { children: ReactNode }) {
+  const { user, logout } = useAuth();
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100">
       <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur">
@@ -25,6 +31,15 @@ export function AppShell({ children }: { children: ReactNode }) {
                 {item.label}
               </Link>
             ))}
+            {user && (
+              <button
+                type="button"
+                onClick={logout}
+                className="ml-2 rounded-lg border border-slate-700 px-3 py-2 text-slate-300 transition hover:border-slate-500 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+              >
+                Sign out
+              </button>
+            )}
           </nav>
         </div>
       </header>
