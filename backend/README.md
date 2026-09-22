@@ -26,3 +26,6 @@ The initial migration establishes the Alembic baseline without creating product 
 
 - `GET /health`
 - `GET /api/health`
+- `POST /api/auth/register`
+- `POST /api/auth/login`
+- `GET /api/auth/me`

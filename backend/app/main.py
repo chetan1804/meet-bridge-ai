@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.api.routes.auth import router as auth_router
 from app.api.routes.conversation import router as conversation_router
 from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.meeting_state import router as meeting_state_router
@@ -19,6 +20,7 @@ app.include_router(questions_router, prefix=settings.api_prefix)
 app.include_router(conversation_router, prefix=settings.api_prefix)
 app.include_router(meeting_state_router, prefix=settings.api_prefix)
 app.include_router(knowledge_router, prefix=settings.api_prefix)
+app.include_router(auth_router, prefix=settings.api_prefix)
 
 app.add_middleware(
     CORSMiddleware,
