@@ -1,6 +1,6 @@
 # MeetBridge AI Backend
 
-This backend is the initial FastAPI scaffold for MeetBridge AI. It provides a health-checked application shell, environment configuration, and database-ready structure for future repository, service, and AI modules.
+This backend provides a health-checked FastAPI application shell, environment configuration, and a SQLAlchemy/Alembic foundation. Feature tables will be added through their owning feature migrations rather than pre-created.
 
 ## Local development
 
@@ -11,6 +11,16 @@ source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
+
+## Database migrations
+
+Start PostgreSQL first, then apply migrations from `backend/`:
+
+```bash
+alembic upgrade head
+```
+
+The initial migration establishes the Alembic baseline without creating product tables. Use `alembic revision --autogenerate -m "..."` only when a feature introduces SQLAlchemy models.
 
 ## API endpoints
 
