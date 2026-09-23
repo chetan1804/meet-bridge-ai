@@ -29,3 +29,9 @@ The initial migration establishes the Alembic baseline without creating product 
 - `POST /api/auth/register`
 - `POST /api/auth/login`
 - `GET /api/auth/me`
+- `POST /api/organizations`
+- `GET /api/organizations`
+- `GET /api/organizations/{organization_id}`
+- `GET|POST /api/organizations/{organization_id}/members`
+
+Every registered account receives a personal workspace. Shared workspace endpoints require a bearer token and scope resource access through the caller's membership; inaccessible workspace IDs return `404` to avoid disclosing another tenant's data.

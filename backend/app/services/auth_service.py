@@ -5,6 +5,7 @@ from sqlalchemy.orm import Session
 from app.core.security import hash_password, verify_password
 from app.models.user import User
 from app.schemas.auth import LoginRequest, RegistrationRequest
+from app.services.workspace_service import WorkspaceService
 
 
 class AuthService:
@@ -12,6 +13,8 @@ class AuthService:
         user = User(email=payload.email.lower(), hashed_password=hash_password(payload.password))
         session.add(user)
         try:
+            session.flush()
+            WorkspaceService().create_personal_workspace(session, user)
             session.commit()
         except IntegrityError:
             session.rollback()
