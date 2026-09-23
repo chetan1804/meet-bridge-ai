@@ -1,5 +1,10 @@
 from functools import lru_cache
+from pathlib import Path
+
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
 
 
 class Settings(BaseSettings):
@@ -18,7 +23,9 @@ class Settings(BaseSettings):
     enable_audio_retention: bool = False
     audio_retention_days: int = 7
 
-    model_config = SettingsConfigDict(env_file=".env", case_sensitive=False, extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=PROJECT_ROOT / ".env", case_sensitive=False, extra="ignore"
+    )
 
 
 @lru_cache
