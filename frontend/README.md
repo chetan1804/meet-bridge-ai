@@ -10,6 +10,8 @@ The browser API base URL is configured through `NEXT_PUBLIC_API_URL`. It default
 
 The dashboard requires a user session. Start the backend and apply its migrations before registering at `/register`; the session token is kept in browser local storage for this incremental client-side implementation.
 
+The desktop dashboard includes a workspace switcher populated from the organization API and a settings page. The selected workspace is retained in browser local storage; feature data will become tenant-scoped when its domain APIs are added.
+
 ## Local development
 
 ```bash

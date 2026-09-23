@@ -242,7 +242,16 @@ function CopilotDashboard() {
   return (
     <AppShell>
       <main className="px-6 py-10">
-      <div className="mx-auto max-w-7xl space-y-8">
+        <div className="mx-auto max-w-7xl space-y-8">
+          <section className="flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <p className="text-sm uppercase tracking-[0.2em] text-violet-400">Dashboard</p>
+              <p className="mt-2 text-sm text-slate-400">Your live meeting intelligence workspace.</p>
+            </div>
+            <a href="#meetings" className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-violet-400 hover:text-white">
+              View meeting activity
+            </a>
+          </section>
         <header className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
           <div>
             <p className="text-sm uppercase tracking-[0.25em] text-violet-400">
@@ -333,7 +342,7 @@ function CopilotDashboard() {
           </aside>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-2">
+        <section id="meetings" className="grid gap-6 lg:grid-cols-2">
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Meeting summary
@@ -381,7 +390,7 @@ function CopilotDashboard() {
           </div>
         </section>
 
-        <section className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
+        <section id="knowledge" className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
           <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
             <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
               Suggested answer
