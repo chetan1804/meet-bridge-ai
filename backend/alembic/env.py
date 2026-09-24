@@ -7,7 +7,7 @@ from sqlalchemy import engine_from_config, pool
 
 from app.core.config import get_settings
 from app.db.base import Base
-from app.models import Organization, OrganizationMember, User  # noqa: F401 - imports model metadata for autogeneration
+from app.models import Meeting, Organization, OrganizationMember, User  # noqa: F401 - imports model metadata for autogeneration
 
 
 config = context.config
