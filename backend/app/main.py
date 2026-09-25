@@ -6,6 +6,7 @@ from app.api.routes.conversation import router as conversation_router
 from app.api.routes.knowledge import router as knowledge_router
 from app.api.routes.meeting_state import router as meeting_state_router
 from app.api.routes.meetings import router as meetings_router
+from app.api.routes.meeting_socket import router as meeting_socket_router
 from app.api.routes.organizations import router as organizations_router
 from app.api.routes.questions import router as questions_router
 from app.core.config import get_settings
@@ -25,6 +26,7 @@ app.include_router(knowledge_router, prefix=settings.api_prefix)
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(organizations_router, prefix=settings.api_prefix)
 app.include_router(meetings_router, prefix=settings.api_prefix)
+app.include_router(meeting_socket_router, prefix=settings.api_prefix)
 
 app.add_middleware(
     CORSMiddleware,
