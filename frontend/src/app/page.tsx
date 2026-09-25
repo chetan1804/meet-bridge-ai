@@ -1,11 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { AppShell } from "@/components/app-shell";
 import { RequireAuth } from "@/components/require-auth";
 import { StatusBadge } from "@/components/status-badge";
-import { apiEndpoint } from "@/lib/api";
+import { apiEndpoint, apiUrl } from "@/lib/api";
 
 const fallbackTranscript = [
   "Product lead: We need a lower-friction plan for meeting follow-up.",
@@ -38,6 +38,19 @@ const defaultRetrievedEvidence = [
   "Evaluate retrieval quality, then adjust chunking strategy and ranking heuristics if needed.",
 ];
 
+const tokenStorageKey = "meetbridge_access_token";
+const workspaceStorageKey = "meetbridge_workspace_id";
+const meetingStorageKey = "meetbridge_meeting_id";
+
+function blobToBase64(blob: Blob): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => resolve(String(reader.result).split(",")[1] ?? "");
+    reader.onerror = () => reject(reader.error);
+    reader.readAsDataURL(blob);
+  });
+}
+
 export default function Home() {
   return (
     <RequireAuth>
@@ -66,9 +79,106 @@ function CopilotDashboard() {
     defaultMeetingInsights,
   );
   const [meetingTitle, setMeetingTitle] = useState("Q3 Product Review");
-  const [listening, setListening] = useState(true);
-  const [connected, setConnected] = useState(true);
+  const [listening, setListening] = useState(false);
+  const [connected, setConnected] = useState(false);
+  const [captureError, setCaptureError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const socketRef = useRef<WebSocket | null>(null);
+
+  const closeMeetingSocket = useCallback(() => {
+    socketRef.current?.close();
+    socketRef.current = null;
+    setConnected(false);
+  }, []);
+
+  const stopCapture = useCallback(() => {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+    mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+    mediaStreamRef.current = null;
+    closeMeetingSocket();
+    setListening(false);
+  }, [closeMeetingSocket]);
+
+  useEffect(() => stopCapture, [stopCapture]);
+
+  const startCapture = async () => {
+    setCaptureError(null);
+    if (
+      !navigator.mediaDevices?.getUserMedia ||
+      typeof MediaRecorder === "undefined"
+    ) {
+      setCaptureError("Audio capture is not supported in this browser.");
+      return;
+    }
+
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
+
+      const token = window.localStorage.getItem(tokenStorageKey);
+      const organizationId = window.localStorage.getItem(workspaceStorageKey);
+      const meetingId = window.localStorage.getItem(meetingStorageKey);
+      if (token && organizationId && meetingId) {
+        const socketUrl = apiUrl.replace(/^http/, "ws");
+        const socket = new WebSocket(
+          `${socketUrl}/api/ws/organizations/${organizationId}/meetings/${meetingId}?token=${encodeURIComponent(token)}`,
+        );
+        socket.onopen = () => setConnected(true);
+        socket.onclose = () => setConnected(false);
+        socket.onerror = () =>
+          setCaptureError(
+            "Meeting connection is unavailable; audio remains local.",
+          );
+        socketRef.current = socket;
+      }
+
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = async (event) => {
+        if (
+          !event.data.size ||
+          socketRef.current?.readyState !== WebSocket.OPEN
+        ) {
+          return;
+        }
+        const data = await blobToBase64(event.data);
+        socketRef.current?.send(
+          JSON.stringify({
+            type: "audio_chunk",
+            mime_type: event.data.type,
+            data,
+          }),
+        );
+      };
+      recorder.start(1000);
+      mediaRecorderRef.current = recorder;
+      setListening(true);
+    } catch (error) {
+      mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
+      setCaptureError(
+        error instanceof DOMException && error.name === "NotAllowedError"
+          ? "Microphone permission was denied."
+          : "Microphone capture could not be started.",
+      );
+    }
+  };
+
+  const pauseCapture = () => {
+    if (mediaRecorderRef.current?.state === "recording") {
+      mediaRecorderRef.current.pause();
+      setListening(false);
+    }
+  };
+
+  const resumeCapture = () => {
+    if (mediaRecorderRef.current?.state === "paused") {
+      mediaRecorderRef.current.resume();
+      setListening(true);
+    }
+  };
 
   const refreshMeetingState = useCallback(async () => {
     try {
@@ -127,9 +237,7 @@ function CopilotDashboard() {
   useEffect(() => {
     const fetchContext = async () => {
       try {
-        const response = await fetch(
-          apiEndpoint("/api/conversation/context"),
-        );
+        const response = await fetch(apiEndpoint("/api/conversation/context"));
         if (!response.ok) {
           return;
         }
@@ -168,16 +276,13 @@ function CopilotDashboard() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        apiEndpoint("/api/conversation/buffer"),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ utterance: sampleQuestion }),
+      const response = await fetch(apiEndpoint("/api/conversation/buffer"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({ utterance: sampleQuestion }),
+      });
 
       if (response.ok) {
         const data = await response.json();
@@ -208,16 +313,13 @@ function CopilotDashboard() {
     }
 
     try {
-      const response = await fetch(
-        apiEndpoint("/api/knowledge/search"),
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ question: query }),
+      const response = await fetch(apiEndpoint("/api/knowledge/search"), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        body: JSON.stringify({ question: query }),
+      });
 
       if (!response.ok) {
         return;
@@ -245,200 +347,254 @@ function CopilotDashboard() {
         <div className="mx-auto max-w-7xl space-y-8">
           <section className="flex flex-wrap items-end justify-between gap-4">
             <div>
-              <p className="text-sm uppercase tracking-[0.2em] text-violet-400">Dashboard</p>
-              <p className="mt-2 text-sm text-slate-400">Your live meeting intelligence workspace.</p>
+              <p className="text-sm uppercase tracking-[0.2em] text-violet-400">
+                Dashboard
+              </p>
+              <p className="mt-2 text-sm text-slate-400">
+                Your live meeting intelligence workspace.
+              </p>
             </div>
-            <a href="#meetings" className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-violet-400 hover:text-white">
+            <a
+              href="#meetings"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-violet-400 hover:text-white"
+            >
               View meeting activity
             </a>
           </section>
-        <header className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
-          <div>
-            <p className="text-sm uppercase tracking-[0.25em] text-violet-400">
-              MeetBridge AI
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold">
-              Understand. Think. Respond.
-            </h1>
-          </div>
-          <div className="flex items-center gap-3 text-sm">
-            <StatusBadge label={listening ? "Listening" : "Paused"} active={listening} />
-            <StatusBadge label={connected ? "Connected" : "Disconnected"} active={connected} />
-          </div>
-        </header>
-
-        <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-slate-400">Meeting title</p>
-                <h2 className="text-2xl font-semibold">{meetingTitle}</h2>
-              </div>
-              <div className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-right">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  Timer
-                </p>
-                <p className="text-lg font-medium">00:18:42</p>
-              </div>
+          <header className="flex items-center justify-between rounded-2xl border border-slate-800 bg-slate-900/80 p-5 shadow-lg shadow-slate-950/30">
+            <div>
+              <p className="text-sm uppercase tracking-[0.25em] text-violet-400">
+                MeetBridge AI
+              </p>
+              <h1 className="mt-2 text-3xl font-semibold">
+                Understand. Think. Respond.
+              </h1>
             </div>
+            <div className="flex items-center gap-3 text-sm">
+              <StatusBadge
+                label={listening ? "Listening" : "Paused"}
+                active={listening}
+              />
+              <StatusBadge
+                label={connected ? "Connected" : "Disconnected"}
+                active={connected}
+              />
+            </div>
+          </header>
 
-            <div className="space-y-3">
-              {transcript.map((line, index) => (
-                <div
-                  key={`${line}-${index}`}
-                  className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-200"
-                >
-                  {line}
+          <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <div className="mb-4 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-slate-400">Meeting title</p>
+                  <h2 className="text-2xl font-semibold">{meetingTitle}</h2>
                 </div>
-              ))}
-            </div>
-          </div>
+                <div className="rounded-xl border border-slate-700 bg-slate-800 px-3 py-2 text-right">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Timer
+                  </p>
+                  <p className="text-lg font-medium">00:18:42</p>
+                </div>
+              </div>
 
-          <aside className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Current Question
-              </p>
-              <h3 className="mt-2 text-xl font-semibold">{currentQuestion}</h3>
-            </div>
-
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                What they are asking
-              </p>
-              <p className="mt-2 text-sm text-slate-200">{explanation}</p>
-            </div>
-
-            <div className="mt-4 space-y-2">
-              <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Search knowledge base
-              </label>
-              <div className="flex gap-2">
-                <input
-                  value={questionInput}
-                  onChange={(event) => setQuestionInput(event.target.value)}
-                  className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-0 placeholder:text-slate-500"
-                  placeholder="Ask a follow-up question"
-                />
-                <button
-                  onClick={handleKnowledgeSearch}
-                  className="rounded-lg border border-violet-500 bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
-                >
-                  Search
-                </button>
+              <div className="space-y-3">
+                {transcript.map((line, index) => (
+                  <div
+                    key={`${line}-${index}`}
+                    className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-200"
+                  >
+                    {line}
+                  </div>
+                ))}
               </div>
             </div>
 
-            <div>
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Key points
-              </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                {importantTopics.map((point) => (
-                  <li key={point}>{point}</li>
-                ))}
-              </ul>
-            </div>
-          </aside>
-        </section>
-
-        <section id="meetings" className="grid gap-6 lg:grid-cols-2">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-              Meeting summary
-            </p>
-            <p className="mt-3 text-base leading-7 text-slate-200">
-              {meetingInsights.summary}
-            </p>
-
-            <div className="mt-5 space-y-4">
+            <aside className="space-y-6 rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  Decisions
+                  Current Question
+                </p>
+                <h3 className="mt-2 text-xl font-semibold">
+                  {currentQuestion}
+                </h3>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  What they are asking
+                </p>
+                <p className="mt-2 text-sm text-slate-200">{explanation}</p>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                <label className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Search knowledge base
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    value={questionInput}
+                    onChange={(event) => setQuestionInput(event.target.value)}
+                    className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none ring-0 placeholder:text-slate-500"
+                    placeholder="Ask a follow-up question"
+                  />
+                  <button
+                    onClick={handleKnowledgeSearch}
+                    className="rounded-lg border border-violet-500 bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-500"
+                  >
+                    Search
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Key points
                 </p>
                 <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                  {meetingInsights.decisions.map((item) => (
+                  {importantTopics.map((point) => (
+                    <li key={point}>{point}</li>
+                  ))}
+                </ul>
+              </div>
+            </aside>
+          </section>
+
+          <section id="meetings" className="grid gap-6 lg:grid-cols-2">
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Meeting summary
+              </p>
+              <p className="mt-3 text-base leading-7 text-slate-200">
+                {meetingInsights.summary}
+              </p>
+
+              <div className="mt-5 space-y-4">
+                <div>
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Decisions
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                    {meetingInsights.decisions.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Action items
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                  {meetingInsights.action_items.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <div className="mt-5">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Open questions
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                  {meetingInsights.open_questions.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>
               </div>
             </div>
-          </div>
+          </section>
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <div>
+          <section
+            id="knowledge"
+            className="grid gap-6 lg:grid-cols-[1fr_1.2fr]"
+          >
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Action items
+                Suggested answer
               </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                {meetingInsights.action_items.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
+              <p className="mt-3 text-base leading-7 text-slate-200">
+                {answer}
+              </p>
+
+              <div className="mt-5">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Retrieved evidence
+                </p>
+                <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-200">
+                  {retrievedEvidence.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
+              </div>
             </div>
 
-            <div className="mt-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Open questions
-              </p>
-              <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                {meetingInsights.open_questions.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-        </section>
-
-        <section id="knowledge" className="grid gap-6 lg:grid-cols-[1fr_1.2fr]">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-              Suggested answer
-            </p>
-            <p className="mt-3 text-base leading-7 text-slate-200">{answer}</p>
-
-            <div className="mt-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Retrieved evidence
-              </p>
-              <ul className="mt-2 list-disc space-y-2 pl-5 text-sm text-slate-200">
-                {retrievedEvidence.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-            <div className="flex flex-wrap gap-2">
-              {[
-                "Start",
-                "Pause",
-                "Stop",
-                "Mute AI suggestions",
-                "Short answer",
-                "Detailed answer",
-                "Technical answer",
-                "Translate",
-              ].map((action) => (
+            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+              <div className="flex flex-wrap gap-2">
                 <button
-                  key={action}
-                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 transition hover:border-violet-500 hover:text-violet-200"
+                  type="button"
+                  onClick={startCapture}
+                  disabled={
+                    listening || mediaRecorderRef.current?.state === "paused"
+                  }
+                  className="rounded-lg border border-emerald-500/50 bg-emerald-600/20 px-3 py-2 text-sm text-emerald-100 transition hover:bg-emerald-600/30 disabled:cursor-not-allowed disabled:opacity-50"
                 >
-                  {action}
+                  Start listening
                 </button>
-              ))}
-              <button
-                onClick={handleAnalyzeSampleQuestion}
-                disabled={loading}
-                className="rounded-lg border border-violet-500 bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {loading ? "Analyzing..." : "Analyze sample question"}
-              </button>
+                <button
+                  type="button"
+                  onClick={listening ? pauseCapture : resumeCapture}
+                  disabled={
+                    !mediaRecorderRef.current ||
+                    mediaRecorderRef.current.state === "inactive"
+                  }
+                  className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 transition hover:border-violet-500 hover:text-violet-200 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {listening ? "Pause" : "Resume"}
+                </button>
+                <button
+                  type="button"
+                  onClick={stopCapture}
+                  disabled={!mediaRecorderRef.current}
+                  className="rounded-lg border border-rose-500/50 bg-rose-600/10 px-3 py-2 text-sm text-rose-100 transition hover:bg-rose-600/20 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Stop
+                </button>
+                {[
+                  "Mute AI suggestions",
+                  "Short answer",
+                  "Detailed answer",
+                  "Technical answer",
+                  "Translate",
+                ].map((action) => (
+                  <button
+                    type="button"
+                    key={action}
+                    className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm text-slate-100 transition hover:border-violet-500 hover:text-violet-200"
+                  >
+                    {action}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={handleAnalyzeSampleQuestion}
+                  disabled={loading}
+                  className="rounded-lg border border-violet-500 bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {loading ? "Analyzing..." : "Analyze sample question"}
+                </button>
+              </div>
+              <p className="mt-3 text-xs text-slate-400" role="status">
+                {captureError ??
+                  (listening
+                    ? "Microphone active. Audio is sent only to the live meeting session."
+                    : "Microphone is off until you start listening.")}
+              </p>
             </div>
-          </div>
-        </section>
-      </div>
+          </section>
+        </div>
       </main>
     </AppShell>
   );
