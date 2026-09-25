@@ -2,6 +2,7 @@ import json
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, status
+from pydantic import ValidationError
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,8 @@ from app.core.security import decode_access_token
 from app.db.session import get_db_session
 from app.models.meeting import Meeting
 from app.models.organization import OrganizationMember
+from app.schemas.audio import AudioChunkMessage
+from app.services.audio_ingestion import audio_ingestion
 from app.services.meeting_socket_manager import manager
 
 
@@ -79,7 +82,23 @@ async def meeting_socket(
 
             if payload.get("type") == "ping":
                 await websocket.send_json({"type": "pong"})
+            elif payload.get("type") == "audio_chunk":
+                try:
+                    audio_message = AudioChunkMessage.model_validate(payload)
+                    audio_session = audio_ingestion.accept(meeting_id, user_id, audio_message)
+                except (ValidationError, ValueError) as error:
+                    detail = error.errors()[0]["msg"] if isinstance(error, ValidationError) else str(error)
+                    await websocket.send_json({"type": "error", "detail": detail})
+                    continue
+                await websocket.send_json(
+                    {
+                        "type": "audio_ack",
+                        "chunks_received": audio_session.chunks_received,
+                        "bytes_received": audio_session.bytes_received,
+                    }
+                )
             else:
                 await websocket.send_json({"type": "ack", "message_type": payload.get("type", "unknown")})
     except WebSocketDisconnect:
         manager.disconnect(meeting_id, websocket)
+        audio_ingestion.clear(meeting_id, user_id)

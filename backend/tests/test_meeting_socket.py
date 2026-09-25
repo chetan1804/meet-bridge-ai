@@ -38,6 +38,34 @@ def test_authenticated_meeting_socket_supports_handshake_and_heartbeat() -> None
         assert websocket.receive_json() == {"type": "pong"}
 
 
+def test_meeting_socket_accepts_and_accounts_for_audio_chunks() -> None:
+    token, organization_id, meeting_id = _create_meeting()
+
+    with client.websocket_connect(
+        f"/api/ws/organizations/{organization_id}/meetings/{meeting_id}?token={token}"
+    ) as websocket:
+        websocket.receive_json()
+        websocket.send_json({"type": "audio_chunk", "mime_type": "audio/webm", "data": "YXVkaW8="})
+        assert websocket.receive_json() == {
+            "type": "audio_ack",
+            "chunks_received": 1,
+            "bytes_received": 5,
+        }
+
+
+def test_meeting_socket_rejects_invalid_audio_chunks() -> None:
+    token, organization_id, meeting_id = _create_meeting()
+
+    with client.websocket_connect(
+        f"/api/ws/organizations/{organization_id}/meetings/{meeting_id}?token={token}"
+    ) as websocket:
+        websocket.receive_json()
+        websocket.send_json({"type": "audio_chunk", "mime_type": "text/plain", "data": "not-base64"})
+        response = websocket.receive_json()
+        assert response["type"] == "error"
+        assert "audio MIME type" in response["detail"]
+
+
 def test_meeting_socket_rejects_missing_authentication() -> None:
     _, organization_id, meeting_id = _create_meeting()
 
