@@ -20,6 +20,8 @@ class Settings(BaseSettings):
     redis_url: str = "redis://localhost:6379/0"
     openai_api_key: str = ""
     ollama_base_url: str = "http://localhost:11434"
+    ollama_model: str = "llama3.2"
+    llm_provider: str = "mock"
     speech_to_text_provider: str = "mock"
     enable_audio_retention: bool = False
     audio_retention_days: int = 7
