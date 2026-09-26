@@ -7,6 +7,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.api.routes.auth import service as auth_service
+from app.core.config import get_settings
 from app.core.security import decode_access_token
 from app.db.session import get_db_session
 from app.models.meeting import Meeting
@@ -14,10 +15,12 @@ from app.models.organization import OrganizationMember
 from app.schemas.audio import AudioChunkMessage
 from app.services.audio_ingestion import audio_ingestion
 from app.services.meeting_socket_manager import manager
+from app.services.speech_provider import get_speech_provider
 
 
 router = APIRouter(tags=["meeting realtime"])
 DatabaseSession = Annotated[Session, Depends(get_db_session)]
+speech_provider = get_speech_provider(get_settings().speech_to_text_provider)
 
 
 def _token_from_websocket(websocket: WebSocket) -> str | None:
@@ -97,6 +100,9 @@ async def meeting_socket(
                         "bytes_received": audio_session.bytes_received,
                     }
                 )
+                transcript = speech_provider.transcribe_chunk(audio_message)
+                if transcript is not None:
+                    await websocket.send_json({"type": "transcript", **transcript.model_dump()})
             else:
                 await websocket.send_json({"type": "ack", "message_type": payload.get("type", "unknown")})
     except WebSocketDisconnect:

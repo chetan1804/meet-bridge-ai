@@ -51,6 +51,10 @@ def test_meeting_socket_accepts_and_accounts_for_audio_chunks() -> None:
             "chunks_received": 1,
             "bytes_received": 5,
         }
+        transcript = websocket.receive_json()
+        assert transcript["type"] == "transcript"
+        assert transcript["provider"] == "mock"
+        assert transcript["is_final"] is False
 
 
 def test_meeting_socket_rejects_invalid_audio_chunks() -> None:
