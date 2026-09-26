@@ -55,6 +55,8 @@ def test_meeting_socket_accepts_and_accounts_for_audio_chunks() -> None:
         assert transcript["type"] == "transcript"
         assert transcript["provider"] == "mock"
         assert transcript["is_final"] is False
+        meeting_state = client.get("/api/meeting/state").json()
+        assert transcript["text"] in meeting_state["transcript"]
 
 
 def test_meeting_socket_rejects_invalid_audio_chunks() -> None:

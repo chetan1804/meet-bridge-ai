@@ -127,6 +127,26 @@ function CopilotDashboard() {
           `${socketUrl}/api/ws/organizations/${organizationId}/meetings/${meetingId}?token=${encodeURIComponent(token)}`,
         );
         socket.onopen = () => setConnected(true);
+        socket.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data) as {
+              type?: string;
+              text?: string;
+            };
+            if (message.type === "connected") {
+              setConnected(true);
+            }
+            if (message.type === "transcript" && message.text?.trim()) {
+              setTranscript((previous) =>
+                previous.includes(message.text!.trim())
+                  ? previous
+                  : [...previous, message.text!.trim()],
+              );
+            }
+          } catch {
+            // Ignore malformed real-time messages and keep capture active.
+          }
+        };
         socket.onclose = () => setConnected(false);
         socket.onerror = () =>
           setCaptureError(

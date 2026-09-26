@@ -14,6 +14,7 @@ from app.models.meeting import Meeting
 from app.models.organization import OrganizationMember
 from app.schemas.audio import AudioChunkMessage
 from app.services.audio_ingestion import audio_ingestion
+from app.services.meeting_state_service import service as meeting_state_service
 from app.services.meeting_socket_manager import manager
 from app.services.speech_provider import get_speech_provider
 
@@ -102,6 +103,7 @@ async def meeting_socket(
                 )
                 transcript = speech_provider.transcribe_chunk(audio_message)
                 if transcript is not None:
+                    meeting_state_service.add_transcript_line(transcript.text)
                     await websocket.send_json({"type": "transcript", **transcript.model_dump()})
             else:
                 await websocket.send_json({"type": "ack", "message_type": payload.get("type", "unknown")})
