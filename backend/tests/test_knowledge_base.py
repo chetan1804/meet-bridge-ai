@@ -1,6 +1,7 @@
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.services.document_processing import DocumentProcessingService
 
 client = TestClient(app)
 
@@ -56,6 +57,18 @@ def test_upload_text_document_to_knowledge_base() -> None:
     payload = response.json()
     assert payload["title"] == "rag-notes.md"
     assert "Measure recall" in payload["content"]
+
+
+def test_document_processing_service_extracts_and_chunks_markdown() -> None:
+    service = DocumentProcessingService()
+    content = b"# RAG notes\n\nMeasure recall and precision before reranking.\n\nUse smaller chunks and metadata filters for long transcripts."
+
+    chunks = service.process_document(content, "rag-notes.md")
+
+    assert chunks
+    assert len(chunks) >= 1
+    assert any("Measure recall" in chunk for chunk in chunks)
+    assert all(len(chunk) <= 800 for chunk in chunks)
 
 
 def test_knowledge_documents_can_be_filtered_by_workspace_and_owner() -> None:
