@@ -9,6 +9,9 @@ class KnowledgeDocumentCreate(BaseModel):
     title: str = Field(..., min_length=1, description="Document title")
     content: str = Field(..., min_length=1, description="Knowledge base content")
     source: str = Field(default="manual", min_length=1, description="Source label")
+    workspace_id: str | None = Field(default=None, description="Workspace that owns the document.")
+    owner_id: str | None = Field(default=None, description="User or bot that owns the document.")
+    visibility: str = Field(default="workspace", description="Document visibility: workspace or personal.")
     metadata: dict[str, str] = Field(default_factory=dict, description="Optional metadata")
 
 

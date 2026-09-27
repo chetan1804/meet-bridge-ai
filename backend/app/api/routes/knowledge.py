@@ -16,8 +16,16 @@ service = KnowledgeService()
 
 
 @router.get("/documents", response_model=list[KnowledgeDocument])
-def list_documents() -> list[KnowledgeDocument]:
-    return list_knowledge_documents()
+def list_documents(
+    workspace_id: str | None = None,
+    owner_id: str | None = None,
+    visibility: str | None = None,
+) -> list[KnowledgeDocument]:
+    return list_knowledge_documents(
+        workspace_id=workspace_id,
+        owner_id=owner_id,
+        visibility=visibility,
+    )
 
 
 @router.post("/documents", response_model=KnowledgeDocument)

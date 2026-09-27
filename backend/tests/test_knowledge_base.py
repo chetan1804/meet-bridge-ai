@@ -56,3 +56,41 @@ def test_upload_text_document_to_knowledge_base() -> None:
     payload = response.json()
     assert payload["title"] == "rag-notes.md"
     assert "Measure recall" in payload["content"]
+
+
+def test_knowledge_documents_can_be_filtered_by_workspace_and_owner() -> None:
+    workspace_response = client.post(
+        "/api/knowledge/documents",
+        json={
+            "title": "Workspace retrieval guide",
+            "content": "Use metadata filters and reranking to improve recall.",
+            "source": "workspace-docs",
+            "workspace_id": "workspace-42",
+            "owner_id": "team-bot",
+            "visibility": "workspace",
+        },
+    )
+    personal_response = client.post(
+        "/api/knowledge/documents",
+        json={
+            "title": "Personal retrieval notes",
+            "content": "Measure prompt quality and latency before changing rules.",
+            "source": "personal-docs",
+            "workspace_id": "workspace-42",
+            "owner_id": "user-99",
+            "visibility": "personal",
+        },
+    )
+
+    assert workspace_response.status_code == 200
+    assert personal_response.status_code == 200
+
+    filtered_response = client.get(
+        "/api/knowledge/documents",
+        params={"workspace_id": "workspace-42", "owner_id": "user-99"},
+    )
+    assert filtered_response.status_code == 200
+    payload = filtered_response.json()
+    assert payload
+    assert all(doc["workspace_id"] == "workspace-42" for doc in payload)
+    assert all(doc["owner_id"] == "user-99" for doc in payload)
