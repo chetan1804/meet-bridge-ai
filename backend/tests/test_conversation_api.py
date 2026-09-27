@@ -19,6 +19,8 @@ def test_conversation_buffer_route_adds_and_analyzes_utterance() -> None:
     assert payload["question"] == "How would you improve RAG accuracy?"
     assert payload["is_question"] is True
     assert payload["question_type"] == "how-to"
+    assert "suggested_response" in payload
+    assert "retrieval" in payload["suggested_response"].lower()
 
 
 def test_conversation_context_route_returns_window() -> None:

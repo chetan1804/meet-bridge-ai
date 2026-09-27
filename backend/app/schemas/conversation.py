@@ -16,6 +16,7 @@ class ConversationBufferResponse(BaseModel):
     expected_answer_type: str | None = None
     important_topics: list[str] | None = None
     context_needed: list[str] | None = None
+    suggested_response: str | None = None
 
 
 class ConversationContextResponse(BaseModel):

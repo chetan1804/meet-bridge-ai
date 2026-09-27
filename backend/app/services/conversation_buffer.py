@@ -34,6 +34,12 @@ class ConversationBufferService:
 
         intent = self.question_service.understand_intent(detection.question)
 
+        suggested_response = self.question_service.build_suggested_response(
+            detection.question,
+            intent.intent,
+            intent.important_topics,
+        )
+
         return {
             "is_question": detection.is_question,
             "confidence": detection.confidence,
@@ -45,4 +51,5 @@ class ConversationBufferService:
             "expected_answer_type": intent.expected_answer_type,
             "important_topics": intent.important_topics,
             "context_needed": intent.context_needed,
+            "suggested_response": suggested_response,
         }
