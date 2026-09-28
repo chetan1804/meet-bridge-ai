@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 import re
 
+from app.services.embedding_provider import SimpleEmbeddingProvider
+
 
 @dataclass
 class KnowledgeItem:
@@ -14,6 +16,9 @@ class KnowledgeItem:
 class KnowledgeService:
     """Simple retrieval layer for relevant documents and evidence matching."""
 
+    def __init__(self) -> None:
+        self.embedding_provider = SimpleEmbeddingProvider()
+
     def retrieve(self, query: str, documents: list[dict[str, str]] | None = None) -> list[KnowledgeItem]:
         normalized_query = (query or "").strip()
         if not normalized_query:
@@ -24,6 +29,7 @@ class KnowledgeService:
             return []
 
         query_terms = self._expand_query_terms(self._tokenize(normalized_query))
+        query_text = normalized_query
         matches: list[KnowledgeItem] = []
 
         for document in candidate_documents:
@@ -32,7 +38,8 @@ class KnowledgeService:
             if not text:
                 continue
 
-            score = self._score(query_terms, f"{title} {text}")
+            combined_text = f"{title} {text}"
+            score = self._score(query_terms, combined_text, query_text)
             if score > 0:
                 matches.append(KnowledgeItem(title=title, content=text, score=score))
 
@@ -56,18 +63,25 @@ class KnowledgeService:
 
         return expanded
 
-    def _score(self, query_terms: set[str], text: str) -> float:
+    def _score(self, query_terms: set[str], text: str, query: str) -> float:
         words = self._tokenize(text)
         if not query_terms:
             return 0.0
 
         overlap = len(query_terms & words)
-        if overlap == 0:
-            return 0.0
+        weighted = 0.0
+        if overlap > 0:
+            weighted = (overlap / len(query_terms)) * 1.2
 
-        weighted = (overlap / len(query_terms)) * 1.2
+        semantic_signal = self.embedding_provider.cosine_similarity(query, text)
+        if semantic_signal > 0:
+            weighted += semantic_signal * 0.7
+
         if any(term in text.lower() for term in ("retrieval", "chunk", "rerank", "precision", "recall", "metrics", "quality")):
             weighted += 0.25
-        if any(term in text.lower() for term in ("rag", "retrieval", "chunking", "reranking")):
+        if any(term in text.lower() for term in ("rag", "retrieval", "chunking", "reranking", "embedding", "semantic", "vector")):
             weighted += 0.15
+
+        if weighted <= 0:
+            return 0.0
         return round(min(weighted, 1.0), 4)
