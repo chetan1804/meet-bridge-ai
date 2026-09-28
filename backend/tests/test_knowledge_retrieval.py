@@ -43,3 +43,28 @@ def test_retrieve_semantic_matches_related_search_terms() -> None:
     assert result
     assert result[0].title == "Embedding retrieval playbook"
     assert result[0].score > 0.4
+
+
+def test_retrieve_prefers_metadata_related_documents() -> None:
+    documents = [
+        {
+            "title": "Sprint planning",
+            "content": "The team will review staffing and milestones before launch.",
+            "metadata": {"topic": "planning"},
+        },
+        {
+            "title": "Embedding retrieval playbook",
+            "content": "Use embeddings and vector similarity to find conceptually related passages and rerank the best matches by relevance.",
+            "metadata": {"topic": "retrieval"},
+        },
+    ]
+
+    result = KnowledgeService().retrieve(
+        "How can we improve semantic search quality?",
+        documents,
+        metadata_filters={"topic": "retrieval"},
+    )
+
+    assert result
+    assert result[0].title == "Embedding retrieval playbook"
+    assert result[0].score > 0.4

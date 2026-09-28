@@ -19,7 +19,12 @@ class KnowledgeService:
     def __init__(self) -> None:
         self.embedding_provider = SimpleEmbeddingProvider()
 
-    def retrieve(self, query: str, documents: list[dict[str, str]] | None = None) -> list[KnowledgeItem]:
+    def retrieve(
+        self,
+        query: str,
+        documents: list[dict[str, str]] | None = None,
+        metadata_filters: dict[str, str] | None = None,
+    ) -> list[KnowledgeItem]:
         normalized_query = (query or "").strip()
         if not normalized_query:
             return []
@@ -30,6 +35,7 @@ class KnowledgeService:
 
         query_terms = self._expand_query_terms(self._tokenize(normalized_query))
         query_text = normalized_query
+        metadata_filters = metadata_filters or {}
         matches: list[KnowledgeItem] = []
 
         for document in candidate_documents:
@@ -38,8 +44,12 @@ class KnowledgeService:
             if not text:
                 continue
 
+            metadata = document.get("metadata") or {}
+            if not self._matches_metadata_filters(metadata, metadata_filters):
+                continue
+
             combined_text = f"{title} {text}"
-            score = self._score(query_terms, combined_text, query_text)
+            score = self._score(query_terms, combined_text, query_text, metadata, metadata_filters)
             if score > 0:
                 matches.append(KnowledgeItem(title=title, content=text, score=score))
 
@@ -63,7 +73,14 @@ class KnowledgeService:
 
         return expanded
 
-    def _score(self, query_terms: set[str], text: str, query: str) -> float:
+    def _score(
+        self,
+        query_terms: set[str],
+        text: str,
+        query: str,
+        metadata: dict[str, str] | None = None,
+        metadata_filters: dict[str, str] | None = None,
+    ) -> float:
         words = self._tokenize(text)
         if not query_terms:
             return 0.0
@@ -77,6 +94,16 @@ class KnowledgeService:
         if semantic_signal > 0:
             weighted += semantic_signal * 0.7
 
+        for key, expected_value in (metadata_filters or {}).items():
+            actual_value = (metadata or {}).get(key)
+            if actual_value is not None:
+                normalized_expected = str(expected_value).strip().lower()
+                normalized_actual = str(actual_value).strip().lower()
+                if normalized_actual == normalized_expected:
+                    weighted += 0.4
+                elif normalized_expected in normalized_actual:
+                    weighted += 0.2
+
         if any(term in text.lower() for term in ("retrieval", "chunk", "rerank", "precision", "recall", "metrics", "quality")):
             weighted += 0.25
         if any(term in text.lower() for term in ("rag", "retrieval", "chunking", "reranking", "embedding", "semantic", "vector")):
@@ -85,3 +112,15 @@ class KnowledgeService:
         if weighted <= 0:
             return 0.0
         return round(min(weighted, 1.0), 4)
+
+    def _matches_metadata_filters(self, metadata: dict[str, str], metadata_filters: dict[str, str]) -> bool:
+        if not metadata_filters:
+            return True
+
+        for key, expected_value in metadata_filters.items():
+            actual_value = metadata.get(key)
+            if actual_value is None:
+                return False
+            if str(actual_value).strip().lower() != str(expected_value).strip().lower():
+                return False
+        return True
