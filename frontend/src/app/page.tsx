@@ -42,6 +42,14 @@ const tokenStorageKey = "meetbridge_access_token";
 const workspaceStorageKey = "meetbridge_workspace_id";
 const meetingStorageKey = "meetbridge_meeting_id";
 
+type MeetingSummary = {
+  id: string;
+  organization_id: string;
+  title: string;
+  status: string;
+  scheduled_at: string | null;
+};
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -79,6 +87,9 @@ function CopilotDashboard() {
     defaultMeetingInsights,
   );
   const [meetingTitle, setMeetingTitle] = useState("Q3 Product Review");
+  const [meetingInput, setMeetingInput] = useState("Q3 Product Review");
+  const [meetingList, setMeetingList] = useState<MeetingSummary[]>([]);
+  const [meetingLoading, setMeetingLoading] = useState(false);
   const [listening, setListening] = useState(false);
   const [connected, setConnected] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
@@ -103,6 +114,84 @@ function CopilotDashboard() {
   }, [closeMeetingSocket]);
 
   useEffect(() => stopCapture, [stopCapture]);
+
+  const loadMeetings = useCallback(async () => {
+    const token = window.localStorage.getItem(tokenStorageKey);
+    const organizationId = window.localStorage.getItem(workspaceStorageKey);
+    if (!token || !organizationId) {
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        apiEndpoint(`/api/organizations/${organizationId}/meetings`),
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const meetings = (await response.json()) as MeetingSummary[];
+      setMeetingList(meetings);
+
+      const savedMeetingId = window.localStorage.getItem(meetingStorageKey);
+      const nextMeeting =
+        meetings.find((meeting) => meeting.id === savedMeetingId) ??
+        meetings[0];
+
+      if (nextMeeting) {
+        setMeetingTitle(nextMeeting.title);
+        setMeetingInput(nextMeeting.title);
+        window.localStorage.setItem(meetingStorageKey, nextMeeting.id);
+      }
+    } catch {
+      // Keep the fallback state until the server is available.
+    }
+  }, []);
+
+  const handleSelectMeeting = useCallback((nextMeeting: MeetingSummary) => {
+    setMeetingTitle(nextMeeting.title);
+    setMeetingInput(nextMeeting.title);
+    window.localStorage.setItem(meetingStorageKey, nextMeeting.id);
+  }, []);
+
+  const handleCreateMeeting = useCallback(async () => {
+    const title = meetingInput.trim();
+    const token = window.localStorage.getItem(tokenStorageKey);
+    const organizationId = window.localStorage.getItem(workspaceStorageKey);
+    if (!title || !token || !organizationId) {
+      return;
+    }
+
+    setMeetingLoading(true);
+    try {
+      const response = await fetch(
+        apiEndpoint(`/api/organizations/${organizationId}/meetings`),
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ title }),
+        },
+      );
+
+      if (!response.ok) {
+        return;
+      }
+
+      const nextMeeting = (await response.json()) as MeetingSummary;
+      setMeetingList((previous) => [nextMeeting, ...previous]);
+      handleSelectMeeting(nextMeeting);
+    } finally {
+      setMeetingLoading(false);
+    }
+  }, [handleSelectMeeting, meetingInput]);
 
   const startCapture = async () => {
     setCaptureError(null);
@@ -283,14 +372,16 @@ function CopilotDashboard() {
 
     void fetchContext();
     void refreshMeetingState();
+    void loadMeetings();
 
     const interval = setInterval(() => {
       void fetchContext();
       void refreshMeetingState();
+      void loadMeetings();
     }, 2000);
 
     return () => clearInterval(interval);
-  }, [refreshMeetingState]);
+  }, [loadMeetings, refreshMeetingState]);
 
   const handleAnalyzeSampleQuestion = async () => {
     setLoading(true);
@@ -479,50 +570,119 @@ function CopilotDashboard() {
             </aside>
           </section>
 
-          <section id="meetings" className="grid gap-6 lg:grid-cols-2">
+          <section
+            id="meetings"
+            className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]"
+          >
             <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                Meeting summary
-              </p>
-              <p className="mt-3 text-base leading-7 text-slate-200">
-                {meetingInsights.summary}
-              </p>
+              <div className="flex items-start justify-between gap-3">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Meetings
+                </p>
+                <button
+                  type="button"
+                  onClick={loadMeetings}
+                  className="text-xs text-violet-300 transition hover:text-violet-200"
+                >
+                  Refresh
+                </button>
+              </div>
 
-              <div className="mt-5 space-y-4">
+              <div className="mt-4 flex gap-2">
+                <input
+                  value={meetingInput}
+                  onChange={(event) => setMeetingInput(event.target.value)}
+                  className="flex-1 rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm text-slate-100 outline-none placeholder:text-slate-500"
+                  placeholder="New meeting title"
+                />
+                <button
+                  type="button"
+                  onClick={handleCreateMeeting}
+                  disabled={meetingLoading || !meetingInput.trim()}
+                  className="rounded-lg border border-violet-500 bg-violet-600 px-3 py-2 text-sm font-medium text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {meetingLoading ? "Creating..." : "Create"}
+                </button>
+              </div>
+
+              <div className="mt-4 space-y-2">
+                {meetingList.length > 0 ? (
+                  meetingList.map((meeting) => (
+                    <button
+                      key={meeting.id}
+                      type="button"
+                      onClick={() => handleSelectMeeting(meeting)}
+                      className="w-full rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-left transition hover:border-violet-500/60 hover:bg-slate-950"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <p className="font-medium text-slate-100">
+                          {meeting.title}
+                        </p>
+                        <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-slate-300">
+                          {meeting.status}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-xs text-slate-400">
+                        {meeting.scheduled_at
+                          ? new Date(meeting.scheduled_at).toLocaleString()
+                          : "No scheduled time"}
+                      </p>
+                    </button>
+                  ))
+                ) : (
+                  <p className="rounded-xl border border-dashed border-slate-700 bg-slate-950/50 p-4 text-sm text-slate-400">
+                    No meetings yet. Create one to start tracking conversation
+                    context.
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="grid gap-6">
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Meeting summary
+                </p>
+                <p className="mt-3 text-base leading-7 text-slate-200">
+                  {meetingInsights.summary}
+                </p>
+
+                <div className="mt-5 space-y-4">
+                  <div>
+                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                      Decisions
+                    </p>
+                    <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                      {meetingInsights.decisions.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
                 <div>
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                    Decisions
+                    Action items
                   </p>
                   <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                    {meetingInsights.decisions.map((item) => (
+                    {meetingInsights.action_items.map((item) => (
                       <li key={item}>{item}</li>
                     ))}
                   </ul>
                 </div>
-              </div>
-            </div>
 
-            <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5">
-              <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  Action items
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                  {meetingInsights.action_items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-
-              <div className="mt-5">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                  Open questions
-                </p>
-                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
-                  {meetingInsights.open_questions.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
+                <div className="mt-5">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                    Open questions
+                  </p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                    {meetingInsights.open_questions.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
             </div>
           </section>
