@@ -97,11 +97,84 @@ function CopilotDashboard() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
+  const reconnectTimeoutRef = useRef<number | null>(null);
 
   const closeMeetingSocket = useCallback(() => {
+    if (reconnectTimeoutRef.current !== null) {
+      window.clearTimeout(reconnectTimeoutRef.current);
+      reconnectTimeoutRef.current = null;
+    }
     socketRef.current?.close();
     socketRef.current = null;
     setConnected(false);
+  }, []);
+
+  const connectMeetingSocket = useCallback((attempt = 0) => {
+    const token = window.localStorage.getItem(tokenStorageKey);
+    const organizationId = window.localStorage.getItem(workspaceStorageKey);
+    const meetingId = window.localStorage.getItem(meetingStorageKey);
+
+    if (!token || !organizationId || !meetingId) {
+      return;
+    }
+
+    const socketUrl = apiUrl.replace(/^http/, "ws");
+    const socket = new WebSocket(
+      `${socketUrl}/api/ws/organizations/${organizationId}/meetings/${meetingId}?token=${encodeURIComponent(token)}`,
+    );
+
+    socket.onopen = () => {
+      setConnected(true);
+      if (reconnectTimeoutRef.current !== null) {
+        window.clearTimeout(reconnectTimeoutRef.current);
+        reconnectTimeoutRef.current = null;
+      }
+    };
+
+    socket.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data) as {
+          type?: string;
+          text?: string;
+        };
+        if (message.type === "connected") {
+          setConnected(true);
+        }
+        if (message.type === "transcript" && message.text?.trim()) {
+          setTranscript((previous) =>
+            previous.includes(message.text!.trim())
+              ? previous
+              : [...previous, message.text!.trim()],
+          );
+        }
+      } catch {
+        // Ignore malformed real-time messages and keep capture active.
+      }
+    };
+
+    socket.onclose = () => {
+      socketRef.current = null;
+      setConnected(false);
+
+      if (mediaRecorderRef.current?.state === "inactive") {
+        return;
+      }
+
+      const delay = Math.min(1000 * 2 ** Math.min(attempt, 4), 10000);
+      reconnectTimeoutRef.current = window.setTimeout(() => {
+        connectMeetingSocket(attempt + 1);
+      }, delay);
+    };
+
+    socket.onerror = () => {
+      if (socketRef.current === socket) {
+        setCaptureError(
+          "Meeting connection is unavailable; audio remains local.",
+        );
+      }
+    };
+
+    socketRef.current = socket;
   }, []);
 
   const stopCapture = useCallback(() => {
@@ -207,42 +280,7 @@ function CopilotDashboard() {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaStreamRef.current = stream;
 
-      const token = window.localStorage.getItem(tokenStorageKey);
-      const organizationId = window.localStorage.getItem(workspaceStorageKey);
-      const meetingId = window.localStorage.getItem(meetingStorageKey);
-      if (token && organizationId && meetingId) {
-        const socketUrl = apiUrl.replace(/^http/, "ws");
-        const socket = new WebSocket(
-          `${socketUrl}/api/ws/organizations/${organizationId}/meetings/${meetingId}?token=${encodeURIComponent(token)}`,
-        );
-        socket.onopen = () => setConnected(true);
-        socket.onmessage = (event) => {
-          try {
-            const message = JSON.parse(event.data) as {
-              type?: string;
-              text?: string;
-            };
-            if (message.type === "connected") {
-              setConnected(true);
-            }
-            if (message.type === "transcript" && message.text?.trim()) {
-              setTranscript((previous) =>
-                previous.includes(message.text!.trim())
-                  ? previous
-                  : [...previous, message.text!.trim()],
-              );
-            }
-          } catch {
-            // Ignore malformed real-time messages and keep capture active.
-          }
-        };
-        socket.onclose = () => setConnected(false);
-        socket.onerror = () =>
-          setCaptureError(
-            "Meeting connection is unavailable; audio remains local.",
-          );
-        socketRef.current = socket;
-      }
+      connectMeetingSocket();
 
       const recorder = new MediaRecorder(stream);
       recorder.ondataavailable = async (event) => {
