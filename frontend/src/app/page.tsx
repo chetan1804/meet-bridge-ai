@@ -50,6 +50,14 @@ type MeetingSummary = {
   scheduled_at: string | null;
 };
 
+type TranscriptEntry = {
+  id: string;
+  text: string;
+  timestamp: string;
+  is_final: boolean;
+  provider?: string;
+};
+
 function blobToBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -90,6 +98,9 @@ function CopilotDashboard() {
   const [meetingInput, setMeetingInput] = useState("Q3 Product Review");
   const [meetingList, setMeetingList] = useState<MeetingSummary[]>([]);
   const [meetingLoading, setMeetingLoading] = useState(false);
+  const [transcriptEntries, setTranscriptEntries] = useState<TranscriptEntry[]>(
+    [],
+  );
   const [listening, setListening] = useState(false);
   const [connected, setConnected] = useState(false);
   const [captureError, setCaptureError] = useState<string | null>(null);
@@ -139,15 +150,36 @@ function CopilotDashboard() {
         const message = JSON.parse(event.data) as {
           type?: string;
           text?: string;
+          is_final?: boolean;
+          provider?: string;
         };
         if (message.type === "connected") {
           setConnected(true);
         }
         if (message.type === "transcript" && message.text?.trim()) {
+          const trimmedText = message.text.trim();
+          const transcriptEvent: TranscriptEntry = {
+            id: `${Date.now()}-${Math.random().toString(16).slice(2)}`,
+            text: trimmedText,
+            timestamp: new Date().toLocaleTimeString([], {
+              hour: "2-digit",
+              minute: "2-digit",
+            }),
+            is_final: Boolean(message.is_final),
+            provider: message.provider,
+          };
+
+          setTranscriptEntries((previous) => {
+            if (previous.some((entry) => entry.text === trimmedText)) {
+              return previous;
+            }
+            return [...previous, transcriptEvent];
+          });
+
           setTranscript((previous) =>
-            previous.includes(message.text!.trim())
+            previous.includes(trimmedText)
               ? previous
-              : [...previous, message.text!.trim()],
+              : [...previous, trimmedText],
           );
         }
       } catch {
@@ -272,6 +304,17 @@ function CopilotDashboard() {
       setMeetingLoading(false);
     }
   }, [handleSelectMeeting, meetingInput]);
+
+  const transcriptDisplay =
+    transcriptEntries.length > 0
+      ? transcriptEntries
+      : transcript.map((text, index) => ({
+          id: `${text}-${index}`,
+          text,
+          timestamp: "live",
+          is_final: true,
+          provider: undefined,
+        }));
 
   const startCapture = async () => {
     setCaptureError(null);
@@ -554,12 +597,24 @@ function CopilotDashboard() {
               </div>
 
               <div className="space-y-3">
-                {transcript.map((line, index) => (
+                {transcriptDisplay.map((entry) => (
                   <div
-                    key={`${line}-${index}`}
+                    key={entry.id}
                     className="rounded-xl border border-slate-800 bg-slate-950/60 p-3 text-sm text-slate-200"
                   >
-                    {line}
+                    <div className="flex items-center justify-between gap-3">
+                      <span>{entry.text}</span>
+                      {entry.provider ? (
+                        <span className="rounded-full border border-slate-700 px-2 py-0.5 text-[10px] uppercase tracking-[0.15em] text-slate-400">
+                          {entry.is_final ? "final" : "partial"}
+                        </span>
+                      ) : null}
+                    </div>
+                    <p className="mt-2 text-[10px] uppercase tracking-[0.18em] text-slate-500">
+                      {entry.provider
+                        ? `${entry.provider} · ${entry.timestamp}`
+                        : entry.timestamp}
+                    </p>
                   </div>
                 ))}
               </div>
