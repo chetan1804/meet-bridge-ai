@@ -98,8 +98,10 @@ function CopilotDashboard() {
   const mediaStreamRef = useRef<MediaStream | null>(null);
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<number | null>(null);
+  const shouldReconnectRef = useRef(true);
 
   const closeMeetingSocket = useCallback(() => {
+    shouldReconnectRef.current = false;
     if (reconnectTimeoutRef.current !== null) {
       window.clearTimeout(reconnectTimeoutRef.current);
       reconnectTimeoutRef.current = null;
@@ -110,6 +112,7 @@ function CopilotDashboard() {
   }, []);
 
   const connectMeetingSocket = useCallback((attempt = 0) => {
+    shouldReconnectRef.current = true;
     const token = window.localStorage.getItem(tokenStorageKey);
     const organizationId = window.localStorage.getItem(workspaceStorageKey);
     const meetingId = window.localStorage.getItem(meetingStorageKey);
@@ -156,7 +159,10 @@ function CopilotDashboard() {
       socketRef.current = null;
       setConnected(false);
 
-      if (mediaRecorderRef.current?.state === "inactive") {
+      if (
+        !shouldReconnectRef.current ||
+        mediaRecorderRef.current?.state === "inactive"
+      ) {
         return;
       }
 
@@ -183,6 +189,7 @@ function CopilotDashboard() {
     mediaStreamRef.current?.getTracks().forEach((track) => track.stop());
     mediaStreamRef.current = null;
     closeMeetingSocket();
+    setCaptureError(null);
     setListening(false);
   }, [closeMeetingSocket]);
 
