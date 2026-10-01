@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     database_url: str = "postgresql+psycopg2://meetbridge:meetbridge@localhost:5432/meetbridge"
     redis_url: str = "redis://localhost:6379/0"
     openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
     ollama_base_url: str = "http://localhost:11434"
     ollama_model: str = "llama3.2"
     llm_provider: str = "mock"

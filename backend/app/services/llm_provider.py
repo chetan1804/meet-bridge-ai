@@ -1,5 +1,8 @@
 from abc import ABC, abstractmethod
 
+import httpx
+from pydantic import BaseModel
+
 from app.schemas.question import IntentUnderstandingResult
 
 
@@ -67,19 +70,120 @@ class OllamaLLMProvider(LLMProvider):
     name = "ollama"
 
     def __init__(self, base_url: str, model: str) -> None:
-        self.base_url = base_url
+        self.base_url = base_url.rstrip("/")
         self.model = model
 
     def understand_intent(self, question: str) -> IntentUnderstandingResult:
-        raise RuntimeError("Ollama structured intent generation is not enabled yet.")
+        return self._generate_structured(
+            "Understand the intent of the question. Return concise, evidence-aware fields.",
+            question,
+            IntentUnderstandingResult,
+        )
 
     def build_suggested_response(self, question: str, intent: str | None = None, important_topics: list[str] | None = None) -> str:
-        raise RuntimeError("Ollama response generation is not enabled yet.")
+        result = self._generate_structured(
+            "Draft a concise, natural response for a meeting participant. Do not invent facts.",
+            f"Question: {question}\nIntent: {intent or 'unspecified'}\nImportant topics: {', '.join(important_topics or [])}",
+            SuggestedResponse,
+        )
+        return result.response
+
+    def _generate_structured(
+        self, instructions: str, prompt: str, response_model: type[BaseModel]
+    ) -> BaseModel:
+        response = httpx.post(
+            f"{self.base_url}/api/chat",
+            json={
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": instructions},
+                    {"role": "user", "content": prompt},
+                ],
+                "format": response_model.model_json_schema(),
+                "stream": False,
+                "options": {"temperature": 0},
+            },
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        content = response.json()["message"]["content"]
+        return response_model.model_validate_json(content)
 
 
-def get_llm_provider(provider_name: str, ollama_base_url: str, ollama_model: str) -> LLMProvider:
+class SuggestedResponse(BaseModel):
+    response: str
+
+
+def _strict_json_schema(response_model: type[BaseModel]) -> dict[str, object]:
+    schema = response_model.model_json_schema()
+    schema["additionalProperties"] = False
+    return schema
+
+
+class OpenAILLMProvider(LLMProvider):
+    name = "openai"
+
+    def __init__(self, api_key: str, model: str = "gpt-4o-mini") -> None:
+        if not api_key:
+            raise ValueError("OPENAI_API_KEY is required when using the OpenAI provider.")
+        self.api_key = api_key
+        self.model = model
+
+    def understand_intent(self, question: str) -> IntentUnderstandingResult:
+        return self._generate_structured(
+            "Understand the intent of the question. Return concise, evidence-aware fields.",
+            question,
+            IntentUnderstandingResult,
+        )
+
+    def build_suggested_response(self, question: str, intent: str | None = None, important_topics: list[str] | None = None) -> str:
+        result = self._generate_structured(
+            "Draft a concise, natural response for a meeting participant. Do not invent facts.",
+            f"Question: {question}\nIntent: {intent or 'unspecified'}\nImportant topics: {', '.join(important_topics or [])}",
+            SuggestedResponse,
+        )
+        return result.response
+
+    def _generate_structured(
+        self, instructions: str, prompt: str, response_model: type[BaseModel]
+    ) -> BaseModel:
+        response = httpx.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json={
+                "model": self.model,
+                "messages": [
+                    {"role": "system", "content": instructions},
+                    {"role": "user", "content": prompt},
+                ],
+                "response_format": {
+                    "type": "json_schema",
+                    "json_schema": {
+                        "name": "meeting_response",
+                        "strict": True,
+                        "schema": _strict_json_schema(response_model),
+                    },
+                },
+                "temperature": 0,
+            },
+            timeout=30.0,
+        )
+        response.raise_for_status()
+        content = response.json()["choices"][0]["message"]["content"]
+        return response_model.model_validate_json(content)
+
+
+def get_llm_provider(
+    provider_name: str,
+    ollama_base_url: str,
+    ollama_model: str,
+    openai_api_key: str = "",
+    openai_model: str = "gpt-4o-mini",
+) -> LLMProvider:
     if provider_name == "mock":
         return MockLLMProvider()
     if provider_name == "ollama":
         return OllamaLLMProvider(ollama_base_url, ollama_model)
+    if provider_name == "openai":
+        return OpenAILLMProvider(openai_api_key, openai_model)
     raise ValueError(f"Unsupported LLM provider: {provider_name}")

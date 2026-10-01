@@ -19,6 +19,8 @@ class QuestionService:
             settings.llm_provider,
             settings.ollama_base_url,
             settings.ollama_model,
+            settings.openai_api_key,
+            settings.openai_model,
         )
 
     def detect_question(self, payload: QuestionDetectionRequest) -> QuestionDetectionResult:
