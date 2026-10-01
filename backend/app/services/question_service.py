@@ -2,12 +2,29 @@ from __future__ import annotations
 
 import re
 
-from app.schemas.question import QuestionDetectionRequest, QuestionDetectionResult, IntentUnderstandingResult
+from app.schemas.question import (
+    IntentUnderstandingResult,
+    QuestionDetectionRequest,
+    QuestionDetectionResult,
+)
 from app.core.config import get_settings
 from app.services.llm_provider import get_llm_provider
 
 
-QUESTION_MARKERS = ("?", "how", "what", "why", "when", "where", "can", "could", "would", "should", "is", "are", "do", "does", "did")
+INDIRECT_QUESTION_CUES = (
+    "i wonder if",
+    "i'm wondering if",
+    "im wondering if",
+    "i'd like to know",
+    "id like to know",
+    "could you",
+    "would you",
+    "please explain",
+    "tell me",
+    "show me",
+    "walk me through",
+    "we need to decide",
+)
 
 
 class QuestionService:
@@ -27,20 +44,33 @@ class QuestionService:
         text = payload.text.strip()
         lowered = text.lower()
 
-        has_question_mark = "?" in text
-        starts_with_question_word = bool(re.match(r"^(how|what|why|when|where|who|which|can|could|would|should|do|does|did|is|are|am|was|were|have|has|had|may|might)\b", lowered))
-
-        is_question = bool(has_question_mark or starts_with_question_word)
-        confidence = 0.92 if is_question else 0.18
-
-        question = text if is_question else ""
-        question_type = self._infer_question_type(text)
+        if "?" in text:
+            is_question, confidence = True, 0.98
+        elif re.match(
+            r"^(how|what|why|when|where|who|which|can|could|would|should|do|does|did|is|are|am|was|were|have|has|had|may|might)\b",
+            lowered,
+        ):
+            is_question, confidence = True, 0.94
+        elif any(cue in lowered for cue in INDIRECT_QUESTION_CUES):
+            result = self.llm_provider.detect_question(text)
+            question_type = result.question_type
+            if result.is_question and question_type == "general":
+                question_type = self._infer_question_type(text)
+            return result.model_copy(
+                update={
+                    "question": text if result.is_question else "",
+                    "question_type": question_type,
+                    "requires_response": result.is_question,
+                }
+            )
+        else:
+            is_question, confidence = False, 0.15
 
         return QuestionDetectionResult(
             is_question=is_question,
             confidence=confidence,
-            question=question,
-            question_type=question_type,
+            question=text if is_question else "",
+            question_type=self._infer_question_type(text),
             requires_response=is_question,
         )
 

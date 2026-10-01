@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import deque
 from typing import Any
 
+from app.schemas.question import QuestionDetectionRequest
 from app.services.question_service import QuestionService
 
 
@@ -27,7 +28,9 @@ class ConversationBufferService:
             return None
 
         latest = self.buffer[-1]
-        detection = self.question_service.detect_question(type("Payload", (), {"text": latest})())
+        detection = self.question_service.detect_question(
+            QuestionDetectionRequest(text=latest)
+        )
 
         if not detection.is_question:
             return None

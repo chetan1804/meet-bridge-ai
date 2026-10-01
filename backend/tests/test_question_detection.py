@@ -18,6 +18,16 @@ def test_detect_non_question_utterance() -> None:
     assert result.requires_response is False
 
 
+def test_detect_indirect_question_with_fallback() -> None:
+    result = QuestionService().detect_question(
+        QuestionDetectionRequest(text="I wonder if we can reduce latency before launch")
+    )
+
+    assert result.is_question is True
+    assert result.requires_response is True
+    assert result.confidence > 0.5
+
+
 def test_understand_intent() -> None:
     result = QuestionService().understand_intent("How would you improve RAG accuracy?")
 

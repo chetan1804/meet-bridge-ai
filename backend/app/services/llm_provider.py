@@ -3,11 +3,15 @@ from abc import ABC, abstractmethod
 import httpx
 from pydantic import BaseModel
 
-from app.schemas.question import IntentUnderstandingResult
+from app.schemas.question import IntentUnderstandingResult, QuestionDetectionResult
 
 
 class LLMProvider(ABC):
     name: str
+
+    @abstractmethod
+    def detect_question(self, text: str) -> QuestionDetectionResult:
+        """Classify ambiguous transcript text as a question or response-worthy request."""
 
     @abstractmethod
     def understand_intent(self, question: str) -> IntentUnderstandingResult:
@@ -25,6 +29,31 @@ class LLMProvider(ABC):
 
 class MockLLMProvider(LLMProvider):
     name = "mock"
+
+    def detect_question(self, text: str) -> QuestionDetectionResult:
+        lowered = text.strip().lower()
+        indirect_cues = (
+            "i wonder if",
+            "i'm wondering if",
+            "im wondering if",
+            "i'd like to know",
+            "id like to know",
+            "could you",
+            "would you",
+            "please explain",
+            "tell me",
+            "show me",
+            "walk me through",
+            "we need to decide",
+        )
+        is_question = any(cue in lowered for cue in indirect_cues)
+        return QuestionDetectionResult(
+            is_question=is_question,
+            confidence=0.72 if is_question else 0.28,
+            question=text.strip() if is_question else "",
+            question_type="general",
+            requires_response=is_question,
+        )
 
     def understand_intent(self, question: str) -> IntentUnderstandingResult:
         q = question.strip()
@@ -72,6 +101,14 @@ class OllamaLLMProvider(LLMProvider):
     def __init__(self, base_url: str, model: str) -> None:
         self.base_url = base_url.rstrip("/")
         self.model = model
+
+    def detect_question(self, text: str) -> QuestionDetectionResult:
+        return self._generate_structured(
+            "Decide whether this transcript utterance asks a question or requests a response. "
+            "Do not classify ordinary statements as questions.",
+            text,
+            QuestionDetectionResult,
+        )
 
     def understand_intent(self, question: str) -> IntentUnderstandingResult:
         return self._generate_structured(
@@ -128,6 +165,14 @@ class OpenAILLMProvider(LLMProvider):
             raise ValueError("OPENAI_API_KEY is required when using the OpenAI provider.")
         self.api_key = api_key
         self.model = model
+
+    def detect_question(self, text: str) -> QuestionDetectionResult:
+        return self._generate_structured(
+            "Decide whether this transcript utterance asks a question or requests a response. "
+            "Do not classify ordinary statements as questions.",
+            text,
+            QuestionDetectionResult,
+        )
 
     def understand_intent(self, question: str) -> IntentUnderstandingResult:
         return self._generate_structured(

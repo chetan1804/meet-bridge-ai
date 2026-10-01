@@ -1,5 +1,8 @@
+import hmac
+
 import pytest
 
+from app.core.config import get_settings
 from app.services.llm_provider import (
     MockLLMProvider,
     OllamaLLMProvider,
@@ -18,8 +21,17 @@ def test_mock_provider_returns_structured_intent_and_response() -> None:
 def test_provider_factory_supports_mock_and_ollama_architecture() -> None:
     assert get_llm_provider("mock", "http://localhost:11434", "llama3.2").name == "mock"
     assert isinstance(get_llm_provider("ollama", "http://localhost:11434", "llama3.2"), OllamaLLMProvider)
+    settings = get_settings()
+    if not settings.openai_api_key:
+        pytest.skip("OPENAI_API_KEY is not configured")
     assert isinstance(
-        get_llm_provider("openai", "http://localhost:11434", "llama3.2", "test-key"),
+        get_llm_provider(
+            "openai",
+            settings.ollama_base_url,
+            settings.ollama_model,
+            settings.openai_api_key,
+            settings.openai_model,
+        ),
         OpenAILLMProvider,
     )
 
@@ -64,6 +76,9 @@ def test_ollama_provider_parses_structured_intent(monkeypatch: pytest.MonkeyPatc
 
 
 def test_openai_provider_uses_strict_structured_output(monkeypatch: pytest.MonkeyPatch) -> None:
+    settings = get_settings()
+    if not settings.openai_api_key:
+        pytest.skip("OPENAI_API_KEY is not configured")
     response_text = '{"response":"Measure retrieval quality against a labeled benchmark."}'
     request: dict[str, object] = {}
 
@@ -80,14 +95,15 @@ def test_openai_provider_uses_strict_structured_output(monkeypatch: pytest.Monke
         return Response()
 
     monkeypatch.setattr("app.services.llm_provider.httpx.post", fake_post)
-    result = OpenAILLMProvider("test-key").build_suggested_response(
+    result = OpenAILLMProvider(settings.openai_api_key, settings.openai_model).build_suggested_response(
         "How do we improve retrieval?", important_topics=["evaluation"]
     )
 
     assert result == "Measure retrieval quality against a labeled benchmark."
-    assert request["headers"] == {"Authorization": "Bearer test-key"}
+    authorization = request["headers"]["Authorization"]
+    assert hmac.compare_digest(authorization, f"Bearer {settings.openai_api_key}")
     assert request["json"]["response_format"]["type"] == "json_schema"
-    assert request["json"]["model"] == "gpt-4o-mini"
+    assert request["json"]["model"] == settings.openai_model
     assert (
         request["json"]["response_format"]["json_schema"]["schema"]["additionalProperties"]
         is False
