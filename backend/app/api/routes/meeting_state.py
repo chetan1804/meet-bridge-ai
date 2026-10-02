@@ -18,17 +18,23 @@ def update_meeting_state(payload: MeetingContextState) -> MeetingStateResponse:
     if payload.current_question:
         state.current_question = payload.current_question
         state.why_they_are_asking = payload.why_they_are_asking or state.why_they_are_asking
+        state.expected_answer_type = payload.expected_answer_type or state.expected_answer_type
         state.important_topics = payload.important_topics or state.important_topics
+        state.context_needed = payload.context_needed or state.context_needed
         state.suggested_answer = payload.suggested_answer or state.suggested_answer
         state.transcript = payload.transcript or state.transcript
         state = service.update_from_question(
             state.current_question,
             why=state.why_they_are_asking,
             topics=state.important_topics,
+            expected_answer_type=state.expected_answer_type,
+            context_needed=state.context_needed,
         )
     else:
         state.why_they_are_asking = payload.why_they_are_asking or state.why_they_are_asking
+        state.expected_answer_type = payload.expected_answer_type or state.expected_answer_type
         state.important_topics = payload.important_topics or state.important_topics
+        state.context_needed = payload.context_needed or state.context_needed
         state.suggested_answer = payload.suggested_answer or state.suggested_answer
         state.transcript = payload.transcript or state.transcript
 

@@ -31,7 +31,9 @@ class MeetingStateService:
             transcript=transcript,
             current_question=base_question,
             why_they_are_asking="They want a practical approach for diagnosing and improving retrieval quality in a production system.",
+            expected_answer_type="actionable guidance",
             important_topics=["evaluation dataset", "chunking strategy", "retrieval metrics"],
+            context_needed=["current workflow", "constraints", "success metrics"],
             suggested_answer="First, I would determine whether the problem comes from retrieval quality, chunk design, or the downstream generation step.",
             retrieved_evidence=evidence,
             meeting_insights=self.insights_service.build_insights(transcript),
@@ -44,12 +46,24 @@ class MeetingStateService:
     def get_state(self) -> MeetingContextState:
         return self.state
 
-    def update_from_question(self, question: str, intent: str | None = None, why: str | None = None, topics: list[str] | None = None) -> MeetingContextState:
+    def update_from_question(
+        self,
+        question: str,
+        intent: str | None = None,
+        why: str | None = None,
+        topics: list[str] | None = None,
+        expected_answer_type: str | None = None,
+        context_needed: list[str] | None = None,
+    ) -> MeetingContextState:
         self.state.current_question = question
         if why:
             self.state.why_they_are_asking = why
+        if expected_answer_type:
+            self.state.expected_answer_type = expected_answer_type
         if topics:
             self.state.important_topics = topics
+        if context_needed:
+            self.state.context_needed = context_needed
 
         knowledge_docs = [
             {"title": document.title, "content": document.content}

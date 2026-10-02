@@ -28,6 +28,8 @@ def append_utterance(payload: ConversationBufferRequest) -> ConversationBufferRe
         analysis.get("intent"),
         analysis.get("why_they_are_asking"),
         analysis.get("important_topics"),
+        analysis.get("expected_answer_type"),
+        analysis.get("context_needed"),
     )
     return ConversationBufferResponse(**analysis)
 

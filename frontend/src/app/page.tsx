@@ -88,6 +88,14 @@ function CopilotDashboard() {
   );
   const [importantTopics, setImportantTopics] =
     useState<string[]>(fallbackKeyPoints);
+  const [expectedAnswerType, setExpectedAnswerType] = useState<string>(
+    "actionable guidance",
+  );
+  const [contextNeeded, setContextNeeded] = useState<string[]>([
+    "current workflow",
+    "constraints",
+    "success metrics",
+  ]);
   const [retrievedEvidence, setRetrievedEvidence] = useState<string[]>(
     defaultRetrievedEvidence,
   );
@@ -400,6 +408,12 @@ function CopilotDashboard() {
       if (data.important_topics?.length) {
         setImportantTopics(data.important_topics);
       }
+      if (data.expected_answer_type) {
+        setExpectedAnswerType(data.expected_answer_type);
+      }
+      if (data.context_needed?.length) {
+        setContextNeeded(data.context_needed);
+      }
       if (data.retrieved_evidence?.length) {
         setRetrievedEvidence(data.retrieved_evidence);
       }
@@ -635,6 +649,26 @@ function CopilotDashboard() {
                   What they are asking
                 </p>
                 <p className="mt-2 text-sm text-slate-200">{explanation}</p>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Expected answer type
+                </p>
+                <p className="mt-2 text-sm text-violet-200">
+                  {expectedAnswerType}
+                </p>
+              </div>
+
+              <div>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                  Context needed
+                </p>
+                <ul className="mt-2 list-disc space-y-1 pl-5 text-sm text-slate-200">
+                  {contextNeeded.map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+                </ul>
               </div>
 
               <div className="mt-4 space-y-2">

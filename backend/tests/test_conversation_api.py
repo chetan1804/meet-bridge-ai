@@ -48,4 +48,6 @@ def test_conversation_buffer_updates_meeting_state() -> None:
     meeting_state = client.get("/api/meeting/state")
     meeting_payload = meeting_state.json()
     assert meeting_payload["current_question"] == "Could we reduce latency in the RAG pipeline?"
+    assert meeting_payload["expected_answer_type"]
+    assert meeting_payload["context_needed"]
     assert "Could we reduce latency in the RAG pipeline?" in meeting_payload["transcript"]
