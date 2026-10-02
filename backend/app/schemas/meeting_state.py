@@ -11,6 +11,7 @@ class MeetingContextState(BaseModel):
     expected_answer_type: str | None = None
     important_topics: list[str] = Field(default_factory=list)
     context_needed: list[str] = Field(default_factory=list)
+    meeting_memory: list[str] = Field(default_factory=list)
     suggested_answer: str | None = None
     transcript: list[str] = Field(default_factory=list)
     retrieved_evidence: list[str] = Field(default_factory=list)

@@ -93,3 +93,20 @@ def test_meeting_state_uses_latest_knowledge_documents() -> None:
     assert response.status_code == 200
     payload = response.json()
     assert any("smaller chunks" in item.lower() for item in payload["retrieved_evidence"])
+
+
+def test_meeting_state_returns_relevant_memory_from_prior_turns() -> None:
+    service.add_transcript_line("We previously decided to evaluate retrieval quality before changing prompts.")
+    service.add_transcript_line("Use smaller chunks and metadata filters to improve recall across long transcripts.")
+
+    state = service.update_from_question(
+        "How can we improve retrieval quality on long transcripts?",
+        intent="Improve process or approach",
+        why="They want a practical retrieval improvement strategy.",
+        topics=["chunking", "metadata filtering", "recall"],
+        expected_answer_type="actionable guidance",
+        context_needed=["current workflow", "prior decisions"],
+    )
+
+    assert state.meeting_memory
+    assert any("chunking" in item.lower() or "retrieval quality" in item.lower() for item in state.meeting_memory)

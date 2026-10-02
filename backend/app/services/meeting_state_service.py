@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 from app.schemas.meeting_state import MeetingContextState
 from app.services.knowledge_service import KnowledgeService
 from app.services.knowledge_store import list_knowledge_documents
@@ -25,6 +27,10 @@ class MeetingStateService:
             "Measure recall and precision on a labeled dataset before changing chunking or reranking.",
             "Evaluate retrieval quality, then adjust chunking strategy and ranking heuristics if needed.",
         ]
+        meeting_memory = [
+            "We previously decided to evaluate retrieval quality before changing prompts.",
+            "Use smaller chunks and metadata filters to improve recall across long transcripts.",
+        ]
         return MeetingContextState(
             meeting_id="demo-meeting",
             title="Q3 Product Review",
@@ -34,6 +40,7 @@ class MeetingStateService:
             expected_answer_type="actionable guidance",
             important_topics=["evaluation dataset", "chunking strategy", "retrieval metrics"],
             context_needed=["current workflow", "constraints", "success metrics"],
+            meeting_memory=meeting_memory,
             suggested_answer="First, I would determine whether the problem comes from retrieval quality, chunk design, or the downstream generation step.",
             retrieved_evidence=evidence,
             meeting_insights=self.insights_service.build_insights(transcript),
@@ -65,6 +72,8 @@ class MeetingStateService:
         if context_needed:
             self.state.context_needed = context_needed
 
+        self.state.meeting_memory = self._find_relevant_memory(question)
+
         knowledge_docs = [
             {"title": document.title, "content": document.content}
             for document in list_knowledge_documents()
@@ -92,8 +101,35 @@ class MeetingStateService:
         cleaned = line.strip()
         if cleaned and cleaned not in self.state.transcript:
             self.state.transcript.append(cleaned)
+        self.state.meeting_memory = self._find_relevant_memory(self.state.current_question or cleaned)
         self.state.meeting_insights = self.insights_service.build_insights(self.state.transcript)
         return self.state
+
+    def _find_relevant_memory(self, query: str, limit: int = 3) -> list[str]:
+        if not query:
+            return []
+
+        query_terms = {term for term in re.findall(r"[a-zA-Z0-9]+", query.lower()) if len(term) > 2}
+        if not query_terms:
+            return []
+
+        scored: list[tuple[float, str]] = []
+        for line in self.state.transcript:
+            tokens = {term for term in re.findall(r"[a-zA-Z0-9]+", line.lower()) if len(term) > 2}
+            overlap = len(query_terms & tokens)
+            if overlap == 0 and not any(term in line.lower() for term in ("retrieval", "chunk", "recall", "quality")):
+                continue
+            score = overlap * 2.0
+            if any(term in line.lower() for term in ("retrieval", "chunk", "recall", "quality", "metadata")):
+                score += 1.0
+            scored.append((score, line))
+
+        ranked = [line for _, line in sorted(scored, key=lambda item: item[0], reverse=True)[:limit]]
+        unique: list[str] = []
+        for line in ranked:
+            if line not in unique:
+                unique.append(line)
+        return unique
 
 
 service = MeetingStateService()
