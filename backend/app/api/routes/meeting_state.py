@@ -1,6 +1,6 @@
 from fastapi import APIRouter
 
-from app.schemas.meeting_state import MeetingContextState, MeetingStateResponse
+from app.schemas.meeting_state import MeetingContextState, MeetingSearchResult, MeetingStateResponse
 from app.services.meeting_state_service import service
 
 router = APIRouter(prefix="/meeting", tags=["meeting"])
@@ -9,6 +9,14 @@ router = APIRouter(prefix="/meeting", tags=["meeting"])
 @router.get("/state", response_model=MeetingStateResponse)
 def get_meeting_state() -> MeetingStateResponse:
     return MeetingStateResponse(**service.get_state().model_dump())
+
+
+@router.get("/search", response_model=list[MeetingSearchResult])
+def search_meeting_history(query: str, limit: int = 5) -> list[MeetingSearchResult]:
+    return [
+        MeetingSearchResult(**entry)
+        for entry in service.search_history(query, limit=limit)
+    ]
 
 
 @router.post("/state", response_model=MeetingStateResponse)

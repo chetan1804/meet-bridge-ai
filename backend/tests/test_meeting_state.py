@@ -110,3 +110,15 @@ def test_meeting_state_returns_relevant_memory_from_prior_turns() -> None:
 
     assert state.meeting_memory
     assert any("chunking" in item.lower() or "retrieval quality" in item.lower() for item in state.meeting_memory)
+
+
+def test_meeting_search_returns_matching_transcript_and_action_items() -> None:
+    service.add_transcript_line("We previously decided to evaluate retrieval quality before changing prompts.")
+    service.add_transcript_line("Use smaller chunks and metadata filters to improve recall across long transcripts.")
+
+    response = client.get("/api/meeting/search", params={"query": "metadata filters"})
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload
+    assert any("metadata filters" in item["match_text"].lower() for item in payload)

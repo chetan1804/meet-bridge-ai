@@ -25,5 +25,11 @@ class MeetingContextState(BaseModel):
     connected: bool = True
 
 
+class MeetingSearchResult(BaseModel):
+    match_text: str
+    match_type: str
+    score: float
+
+
 class MeetingStateResponse(MeetingContextState):
     pass

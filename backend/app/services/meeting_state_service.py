@@ -105,6 +105,46 @@ class MeetingStateService:
         self.state.meeting_insights = self.insights_service.build_insights(self.state.transcript)
         return self.state
 
+    def search_history(self, query: str, limit: int = 5) -> list[dict[str, str | float]]:
+        normalized = (query or "").strip()
+        if not normalized:
+            return []
+
+        query_terms = {term for term in re.findall(r"[a-zA-Z0-9]+", normalized.lower()) if len(term) > 2}
+        candidates: list[tuple[float, str, str]] = []
+
+        for match_type, items in (
+            ("transcript", self.state.transcript),
+            ("decision", self.state.meeting_insights.decisions),
+            ("action_item", self.state.meeting_insights.action_items),
+            ("question", self.state.meeting_insights.open_questions),
+            ("memory", self.state.meeting_memory),
+        ):
+            for text in items:
+                lowered = text.lower()
+                overlap = len(query_terms & {term for term in re.findall(r"[a-zA-Z0-9]+", lowered) if len(term) > 2})
+                score = overlap * 2.5
+                if normalized.lower() in lowered:
+                    score += 3.0
+                if any(keyword in lowered for keyword in ("retrieval", "chunk", "recall", "quality", "metadata", "filter", "prompt", "latency")):
+                    score += 1.0
+                if score > 0:
+                    candidates.append((score, text, match_type))
+
+        unique: list[tuple[float, str, str]] = []
+        seen: set[str] = set()
+        for score, text, match_type in sorted(candidates, key=lambda item: item[0], reverse=True):
+            key = f"{match_type}:{text}"
+            if key in seen:
+                continue
+            seen.add(key)
+            unique.append((score, text, match_type))
+
+        return [
+            {"match_text": text, "match_type": match_type, "score": round(score, 2)}
+            for score, text, match_type in unique[:limit]
+        ]
+
     def _find_relevant_memory(self, query: str, limit: int = 3) -> list[str]:
         if not query:
             return []
