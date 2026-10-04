@@ -16,6 +16,16 @@ type Integration = {
   credential_preview?: string | null;
 };
 
+type UsageMetrics = {
+  ai_requests: number;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  stt_minutes: number;
+  avg_latency_ms: number;
+  estimated_cost_usd: number;
+};
+
 export default function SettingsPage() {
   return (
     <RequireAuth>
@@ -28,6 +38,7 @@ function SettingsContent() {
   const { user } = useAuth();
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [connectingKey, setConnectingKey] = useState<string | null>(null);
+  const [usageMetrics, setUsageMetrics] = useState<UsageMetrics | null>(null);
 
   useEffect(() => {
     const token = window.localStorage.getItem("meetbridge_access_token");
@@ -35,13 +46,26 @@ function SettingsContent() {
       return;
     }
 
-    void fetch(apiEndpoint("/api/integrations"), {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    })
-      .then((response) => response.json())
-      .then((data) => setIntegrations(data as Integration[]))
-      .catch(() => setIntegrations([]));
+    void Promise.all([
+      fetch(apiEndpoint("/api/integrations"), {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+      fetch(apiEndpoint("/api/analytics/usage"), {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
+    ])
+      .then(async ([integrationResponse, analyticsResponse]) => {
+        const integrationData = (await integrationResponse.json()) as Integration[];
+        const analyticsData = (await analyticsResponse.json()) as UsageMetrics;
+        setIntegrations(integrationData);
+        setUsageMetrics(analyticsData);
+      })
+      .catch(() => {
+        setIntegrations([]);
+        setUsageMetrics(null);
+      });
   }, []);
 
   const handleConnect = async (key: string) => {
@@ -95,6 +119,37 @@ function SettingsContent() {
               <dd className="text-emerald-300">Active</dd>
             </div>
           </dl>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold">AI usage analytics</h2>
+            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-xs uppercase tracking-[0.2em] text-violet-200">
+              live
+            </span>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">AI requests</p>
+              <p className="mt-3 text-2xl font-semibold">{usageMetrics?.ai_requests ?? 0}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Tokens</p>
+              <p className="mt-3 text-2xl font-semibold">{usageMetrics?.total_tokens ?? 0}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">STT minutes</p>
+              <p className="mt-3 text-2xl font-semibold">{usageMetrics?.stt_minutes ?? 0}</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Latency</p>
+              <p className="mt-3 text-2xl font-semibold">{usageMetrics?.avg_latency_ms ?? 0} ms</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Cost</p>
+              <p className="mt-3 text-2xl font-semibold">${(usageMetrics?.estimated_cost_usd ?? 0).toFixed(4)}</p>
+            </div>
+          </div>
         </section>
 
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
