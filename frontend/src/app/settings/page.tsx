@@ -26,6 +26,16 @@ type UsageMetrics = {
   estimated_cost_usd: number;
 };
 
+type PlanStatus = {
+  plan: string;
+  plan_name: string;
+  features: string[];
+  usage: Record<string, number>;
+  limits: Record<string, number>;
+  remaining: Record<string, number>;
+  is_over_limit: boolean;
+};
+
 export default function SettingsPage() {
   return (
     <RequireAuth>
@@ -39,6 +49,7 @@ function SettingsContent() {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
   const [connectingKey, setConnectingKey] = useState<string | null>(null);
   const [usageMetrics, setUsageMetrics] = useState<UsageMetrics | null>(null);
+  const [planStatus, setPlanStatus] = useState<PlanStatus | null>(null);
 
   useEffect(() => {
     const token = window.localStorage.getItem("meetbridge_access_token");
@@ -55,16 +66,24 @@ function SettingsContent() {
         headers: { Authorization: `Bearer ${token}` },
         cache: "no-store",
       }),
+      fetch(apiEndpoint("/api/plans/me"), {
+        headers: { Authorization: `Bearer ${token}` },
+        cache: "no-store",
+      }),
     ])
-      .then(async ([integrationResponse, analyticsResponse]) => {
-        const integrationData = (await integrationResponse.json()) as Integration[];
+      .then(async ([integrationResponse, analyticsResponse, planResponse]) => {
+        const integrationData =
+          (await integrationResponse.json()) as Integration[];
         const analyticsData = (await analyticsResponse.json()) as UsageMetrics;
+        const planData = (await planResponse.json()) as PlanStatus;
         setIntegrations(integrationData);
         setUsageMetrics(analyticsData);
+        setPlanStatus(planData);
       })
       .catch(() => {
         setIntegrations([]);
         setUsageMetrics(null);
+        setPlanStatus(null);
       });
   }, []);
 
@@ -123,6 +142,33 @@ function SettingsContent() {
 
         <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
           <div className="flex items-center justify-between gap-4">
+            <h2 className="text-lg font-semibold">Plan and quota</h2>
+            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-xs uppercase tracking-[0.2em] text-violet-200">
+              {planStatus?.plan_name ?? "Free"}
+            </span>
+          </div>
+          <div className="mt-5 grid gap-4 md:grid-cols-2">
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Current plan</p>
+              <p className="mt-3 text-2xl font-semibold">{planStatus?.plan_name ?? "Free"}</p>
+              <p className="mt-2 text-sm text-slate-400">
+                {planStatus?.features?.length ? planStatus.features.join(", ") : "basic access"}
+              </p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Usage remaining</p>
+              <p className="mt-3 text-lg font-semibold text-emerald-300">
+                {planStatus ? `${planStatus.remaining.ai_requests ?? 0} AI requests / ${planStatus.remaining.meetings ?? 0} meetings` : "0 / 0"}
+              </p>
+              {planStatus?.is_over_limit ? (
+                <p className="mt-2 text-sm text-amber-300">Quota limit reached for this billing cycle.</p>
+              ) : null}
+            </div>
+          </div>
+        </section>
+
+        <section className="mt-6 rounded-2xl border border-slate-800 bg-slate-900 p-6">
+          <div className="flex items-center justify-between gap-4">
             <h2 className="text-lg font-semibold">AI usage analytics</h2>
             <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2 py-1 text-xs uppercase tracking-[0.2em] text-violet-200">
               live
@@ -130,24 +176,44 @@ function SettingsContent() {
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2 xl:grid-cols-5">
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">AI requests</p>
-              <p className="mt-3 text-2xl font-semibold">{usageMetrics?.ai_requests ?? 0}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                AI requests
+              </p>
+              <p className="mt-3 text-2xl font-semibold">
+                {usageMetrics?.ai_requests ?? 0}
+              </p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Tokens</p>
-              <p className="mt-3 text-2xl font-semibold">{usageMetrics?.total_tokens ?? 0}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Tokens
+              </p>
+              <p className="mt-3 text-2xl font-semibold">
+                {usageMetrics?.total_tokens ?? 0}
+              </p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">STT minutes</p>
-              <p className="mt-3 text-2xl font-semibold">{usageMetrics?.stt_minutes ?? 0}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                STT minutes
+              </p>
+              <p className="mt-3 text-2xl font-semibold">
+                {usageMetrics?.stt_minutes ?? 0}
+              </p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Latency</p>
-              <p className="mt-3 text-2xl font-semibold">{usageMetrics?.avg_latency_ms ?? 0} ms</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Latency
+              </p>
+              <p className="mt-3 text-2xl font-semibold">
+                {usageMetrics?.avg_latency_ms ?? 0} ms
+              </p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Cost</p>
-              <p className="mt-3 text-2xl font-semibold">${(usageMetrics?.estimated_cost_usd ?? 0).toFixed(4)}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Cost
+              </p>
+              <p className="mt-3 text-2xl font-semibold">
+                ${(usageMetrics?.estimated_cost_usd ?? 0).toFixed(4)}
+              </p>
             </div>
           </div>
         </section>

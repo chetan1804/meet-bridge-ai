@@ -20,3 +20,4 @@ class User(TimestampMixin, Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True, nullable=False)
     hashed_password: Mapped[str] = mapped_column(String(512), nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False)
+    plan: Mapped[str] = mapped_column(String(20), default="FREE", nullable=False)
