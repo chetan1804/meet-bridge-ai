@@ -149,19 +149,31 @@ function SettingsContent() {
           </div>
           <div className="mt-5 grid gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Current plan</p>
-              <p className="mt-3 text-2xl font-semibold">{planStatus?.plan_name ?? "Free"}</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Current plan
+              </p>
+              <p className="mt-3 text-2xl font-semibold">
+                {planStatus?.plan_name ?? "Free"}
+              </p>
               <p className="mt-2 text-sm text-slate-400">
-                {planStatus?.features?.length ? planStatus.features.join(", ") : "basic access"}
+                {planStatus?.features?.length
+                  ? planStatus.features.join(", ")
+                  : "basic access"}
               </p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-950 p-4">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">Usage remaining</p>
+              <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
+                Usage remaining
+              </p>
               <p className="mt-3 text-lg font-semibold text-emerald-300">
-                {planStatus ? `${planStatus.remaining.ai_requests ?? 0} AI requests / ${planStatus.remaining.meetings ?? 0} meetings` : "0 / 0"}
+                {planStatus
+                  ? `${planStatus.remaining.ai_requests ?? 0} AI requests / ${planStatus.remaining.meetings ?? 0} meetings`
+                  : "0 / 0"}
               </p>
               {planStatus?.is_over_limit ? (
-                <p className="mt-2 text-sm text-amber-300">Quota limit reached for this billing cycle.</p>
+                <p className="mt-2 text-sm text-amber-300">
+                  Quota limit reached for this billing cycle.
+                </p>
               ) : null}
             </div>
           </div>

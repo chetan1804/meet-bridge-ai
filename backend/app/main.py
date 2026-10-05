@@ -12,6 +12,7 @@ from app.api.routes.meeting_socket import router as meeting_socket_router
 from app.api.routes.organizations import router as organizations_router
 from app.api.routes.plans import router as plans_router
 from app.api.routes.questions import router as questions_router
+from app.api.routes.security import router as security_router
 from app.core.config import get_settings
 
 settings = get_settings()
@@ -33,6 +34,7 @@ app.include_router(meeting_socket_router, prefix=settings.api_prefix)
 app.include_router(integrations_router, prefix=settings.api_prefix)
 app.include_router(analytics_router, prefix=settings.api_prefix)
 app.include_router(plans_router, prefix=settings.api_prefix)
+app.include_router(security_router, prefix=settings.api_prefix)
 
 app.add_middleware(
     CORSMiddleware,
