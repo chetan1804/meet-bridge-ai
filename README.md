@@ -2,21 +2,23 @@
 
 MeetBridge AI is a real-time AI meeting copilot designed to listen with consent, understand what is being asked, retrieve relevant context from personal and organizational knowledge bases, and suggest concise responses during live meetings.
 
+Version: 1.0.0
+
+## Product overview
+
+The project delivers a privacy-aware meeting assistant with:
+- voice and transcript capture flow
+- meeting state tracking and semantic retrieval
+- question detection and suggested responses
+- knowledge base retrieval with evaluation metrics
+- enterprise controls such as auth, RBAC, audit logging, rate limits, and secure uploads
+
 ## Monorepo structure
 
 - `frontend/` — Next.js + React + TypeScript + Tailwind UI
 - `backend/` — FastAPI + SQLAlchemy + Pydantic service layer
 - `infrastructure/` — deployment and infrastructure support
-- `docs/` — product, architecture, and development notes
-- `scripts/` — automation and local helper scripts
-
-## Key product principles
-
-- visible consent and recording state
-- privacy-first, opt-in meeting capture
-- tenant-aware access control
-- AI reasoning that clearly distinguishes transcript, interpretation, evidence, and suggested response
-- modular, provider-based LLM and speech integrations
+- `docs/` — architecture, checklists, and walkthroughs
 
 ## Local development
 
@@ -41,10 +43,28 @@ MeetBridge AI is a real-time AI meeting copilot designed to listen with consent,
    ```
 5. Open http://localhost:3000
 
-## Architecture notes
+## Production deployment target
 
-The initial scaffold intentionally keeps the setup incremental and production-minded. It includes a real-time UI shell, a health-checked API, environment configuration, and a database/runtime foundation for future implementation via the 40-commit incremental roadmap in the product brief.
+MeetBridge AI is designed for a containerized deployment model with:
+- AWS ALB in front of the frontend and API
+- ECS Fargate or EKS services for runtime workloads
+- RDS PostgreSQL for application data
+- Redis for temporary state and caching
+- Secrets Manager for JWT keys and provider secrets
+- CloudWatch for logging and observability
+
+See [docs/architecture.md](docs/architecture.md) for the architecture view, [docs/release-checklist.md](docs/release-checklist.md) for release gates, [docs/security-checklist.md](docs/security-checklist.md) for security controls, and [docs/demo-walkthrough.md](docs/demo-walkthrough.md) for the product walkthrough.
+
+## Release status
+
+This repository is prepared as a v1.0.0 release candidate with the key operating, quality, and release artifacts in place:
+- backend tests and critical-flow coverage
+- frontend type-checking
+- production runtime configuration validation
+- Docker container definitions
+- GitHub Actions CI workflow
+- architecture and deployment documentation
 
 ## Git workflow
 
-This project is intentionally structured to advance in small, reviewable steps. Each meaningful milestone should be committed separately, with tests and documentation updated before continuing.
+This project is intentionally structured to advance in small, reviewable steps. Each milestone is committed separately with tests and documentation maintained before continuing.
