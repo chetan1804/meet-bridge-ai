@@ -31,7 +31,23 @@ class Settings(BaseSettings):
         env_file=PROJECT_ROOT / ".env", case_sensitive=False, extra="ignore"
     )
 
+    def validate_runtime_environment(self) -> bool:
+        if self.environment.lower() != "production":
+            return True
+
+        if not self.jwt_secret_key or self.jwt_secret_key == "change-me-in-production":
+            raise ValueError("JWT secret must be overridden in production.")
+        if not self.database_url:
+            raise ValueError("Database URL is required in production.")
+        if not self.redis_url:
+            raise ValueError("Redis URL is required in production.")
+        if self.enable_audio_retention and self.audio_retention_days < 1:
+            raise ValueError("Audio retention days must be at least 1 when retention is enabled.")
+        return True
+
 
 @lru_cache
 def get_settings() -> Settings:
-    return Settings()
+    settings = Settings()
+    settings.validate_runtime_environment()
+    return settings
