@@ -7,6 +7,7 @@ Version: 1.0.0
 ## Product overview
 
 The project delivers a privacy-aware meeting assistant with:
+
 - voice and transcript capture flow
 - meeting state tracking and semantic retrieval
 - question detection and suggested responses
@@ -46,6 +47,7 @@ The project delivers a privacy-aware meeting assistant with:
 ## Production deployment target
 
 MeetBridge AI is designed for a containerized deployment model with:
+
 - AWS ALB in front of the frontend and API
 - ECS Fargate or EKS services for runtime workloads
 - RDS PostgreSQL for application data
@@ -58,6 +60,7 @@ See [docs/architecture.md](docs/architecture.md) for the architecture view, [doc
 ## Release status
 
 This repository is prepared as a v1.0.0 release candidate with the key operating, quality, and release artifacts in place:
+
 - backend tests and critical-flow coverage
 - frontend type-checking
 - production runtime configuration validation
