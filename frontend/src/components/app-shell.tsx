@@ -21,18 +21,28 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-950 text-slate-100 lg:flex">
       <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between gap-4 px-6 py-4">
-          <Link href="/" className="font-semibold tracking-tight text-slate-100">
+          <Link
+            href="/"
+            className="font-semibold tracking-tight text-slate-100"
+          >
             MeetBridge <span className="text-violet-400">AI</span>
           </Link>
           <ThemeToggle />
         </div>
       </header>
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-950 p-5 lg:flex">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-slate-100">
+        <Link
+          href="/"
+          className="text-lg font-semibold tracking-tight text-slate-100"
+        >
           MeetBridge <span className="text-violet-400">AI</span>
         </Link>
-        <p className="mt-1 text-xs text-slate-500">Understand. Think. Respond.</p>
-        <div className="mt-8"><WorkspaceSwitcher /></div>
+        <p className="mt-1 text-xs text-slate-500">
+          Understand. Think. Respond.
+        </p>
+        <div className="mt-8">
+          <WorkspaceSwitcher />
+        </div>
         <nav aria-label="Primary navigation" className="mt-8 space-y-1 text-sm">
           {navigationItems.map((item) => (
             <Link
