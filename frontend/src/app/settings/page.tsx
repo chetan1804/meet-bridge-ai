@@ -250,7 +250,7 @@ function SettingsContent() {
                 >
                   <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <h3 className="text-base font-semibold text-white">
+                      <h3 className="text-base font-semibold text-slate-100">
                         {integration.name}
                       </h3>
                       <p className="mt-1 text-sm text-slate-400">

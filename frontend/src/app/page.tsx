@@ -569,7 +569,7 @@ function CopilotDashboard() {
             </div>
             <a
               href="#meetings"
-              className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-violet-400 hover:text-white"
+              className="rounded-lg border border-slate-700 px-3 py-2 text-sm text-slate-200 transition hover:border-violet-400 hover:text-slate-100"
             >
               View meeting activity
             </a>

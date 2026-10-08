@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 
 import { useAuth } from "@/lib/auth";
 import { WorkspaceSwitcher } from "@/components/workspace-switcher";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const navigationItems = [
   { href: "/", label: "Copilot" },
@@ -20,13 +21,14 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-slate-950 text-slate-100 lg:flex">
       <header className="border-b border-slate-800 bg-slate-950/90 backdrop-blur lg:hidden">
         <div className="flex items-center justify-between gap-4 px-6 py-4">
-          <Link href="/" className="font-semibold tracking-tight text-white">
+          <Link href="/" className="font-semibold tracking-tight text-slate-100">
             MeetBridge <span className="text-violet-400">AI</span>
           </Link>
+          <ThemeToggle />
         </div>
       </header>
       <aside className="hidden w-64 shrink-0 flex-col border-r border-slate-800 bg-slate-950 p-5 lg:flex">
-        <Link href="/" className="text-lg font-semibold tracking-tight text-white">
+        <Link href="/" className="text-lg font-semibold tracking-tight text-slate-100">
           MeetBridge <span className="text-violet-400">AI</span>
         </Link>
         <p className="mt-1 text-xs text-slate-500">Understand. Think. Respond.</p>
@@ -36,18 +38,19 @@ export function AppShell({ children }: { children: ReactNode }) {
             <Link
               key={item.label}
               href={item.href}
-              className="block rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-slate-800 hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+              className="block rounded-lg px-3 py-2.5 text-slate-300 transition hover:bg-slate-800 hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
             >
               {item.label}
             </Link>
           ))}
         </nav>
-        <div className="mt-auto border-t border-slate-800 pt-4">
+        <div className="mt-auto space-y-4 border-t border-slate-800 pt-4">
+          <ThemeToggle />
           <p className="truncate text-sm text-slate-300">{user?.email}</p>
           <button
             type="button"
             onClick={logout}
-            className="mt-3 text-sm text-slate-400 transition hover:text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
+            className="mt-3 text-sm text-slate-400 transition hover:text-slate-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-violet-400"
           >
             Sign out
           </button>

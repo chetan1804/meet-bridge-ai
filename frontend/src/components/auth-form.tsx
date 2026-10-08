@@ -5,6 +5,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/lib/auth";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 type AuthFormProps = {
   mode: "login" | "register";
@@ -36,9 +37,12 @@ export function AuthForm({ mode }: AuthFormProps) {
   return (
     <main className="grid min-h-screen place-items-center bg-slate-950 px-6 py-12 text-slate-100">
       <section className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-7 shadow-xl shadow-slate-950/30">
-        <Link href="/" className="text-sm font-semibold tracking-tight text-white">
-          MeetBridge <span className="text-violet-400">AI</span>
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/" className="text-sm font-semibold tracking-tight text-slate-100">
+            MeetBridge <span className="text-violet-400">AI</span>
+          </Link>
+          <ThemeToggle />
+        </div>
         <h1 className="mt-6 text-2xl font-semibold">{isRegistration ? "Create your account" : "Welcome back"}</h1>
         <p className="mt-2 text-sm text-slate-400">
           {isRegistration ? "Start using your meeting copilot." : "Sign in to continue to your meeting copilot."}
